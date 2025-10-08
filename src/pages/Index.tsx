@@ -12,11 +12,13 @@ import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 
-const API_AUTH = 'https://functions.poehali.dev/1fa274be-9623-4944-98ad-cbb58e600c51';
-const API_ADMIN = 'https://functions.poehali.dev/1f5e95c9-45e0-4ba9-85a3-2f0e1e8e1b44';
-const API_GRADES = 'https://functions.poehali.dev/1de964af-0e0e-4343-b359-f7ca46b4b3b6';
-const API_HOMEWORK = 'https://functions.poehali.dev/61f93ab8-f34e-4bf8-83a2-fe4ebb14d1f0';
-const API_PROFILE = 'https://functions.poehali.dev/bd72a7a6-c3c1-48b1-9464-df35fd623cf9';
+// Замените на ваш URL после деплоя на Render
+const API_BASE = 'https://school-diary-api.onrender.com';
+const API_AUTH = `${API_BASE}/auth`;
+const API_ADMIN = `${API_BASE}/admin`;
+const API_GRADES = `${API_BASE}/grades`;
+const API_HOMEWORK = `${API_BASE}/homework`;
+const API_PROFILE = `${API_BASE}/profile`;
 
 const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 const EMOJIS = ['👤', '🎓', '📚', '✏️', '🌟', '🚀', '💼', '👨‍🏫', '👩‍🏫', '🧑‍🎓'];
@@ -80,46 +82,14 @@ export default function Index() {
   const [editingGradeComment, setEditingGradeComment] = useState<{id: number, comment: string} | null>(null);
 
   const handleLogin = async () => {
-    if (login === '22' && password === '22') {
-      setUser({
-        id: 1,
-        login: '22',
-        role: 'admin',
-        full_name: 'Администратор',
-        avatar_color: '#FF5733',
-        avatar_emoji: '🚀'
-      });
-      setIsLoggedIn(true);
-      setSelectedEmoji('🚀');
-      setSelectedColor('#FF5733');
-      toast.success('Вход выполнен (локальный режим)');
-      return;
-    }
-    
     try {
-      console.log('Попытка входа:', { login, password, url: API_AUTH });
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
       const response = await fetch(API_AUTH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login, password }),
-        signal: controller.signal,
-        mode: 'cors',
-        cache: 'no-cache'
+        body: JSON.stringify({ login, password })
       });
       
-      clearTimeout(timeoutId);
-      console.log('Ответ получен:', response.status);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
       const data = await response.json();
-      console.log('Данные:', data);
       
       if (data.success) {
         setUser(data.user);
@@ -131,43 +101,69 @@ export default function Index() {
         toast.error('Неверный логин или пароль');
       }
     } catch (error: any) {
-      console.error('Ошибка входа:', error);
-      if (error.name === 'AbortError') {
-        toast.error('Превышено время ожидания');
-      } else if (error.message.includes('Failed to fetch')) {
-        toast.error('Не удалось подключиться к серверу. Проверьте интернет-соединение');
-      } else {
-        toast.error('Ошибка входа: ' + error.message);
-      }
+      toast.error('Ошибка входа');
     }
   };
 
   const updateProfile = async () => {
-    if (user) {
-      setUser({ ...user, avatar_color: selectedColor, avatar_emoji: selectedEmoji });
+    try {
+      await fetch(API_PROFILE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user?.id,
+          avatar_color: selectedColor,
+          avatar_emoji: selectedEmoji
+        })
+      });
+      
+      if (user) {
+        setUser({ ...user, avatar_color: selectedColor, avatar_emoji: selectedEmoji });
+      }
+      
+      toast.success('Профиль обновлен');
+      setShowProfile(false);
+    } catch (error) {
+      toast.error('Ошибка обновления профиля');
     }
-    toast.success('Профиль обновлен');
-    setShowProfile(false);
   };
 
   const loadData = async () => {
     if (!isLoggedIn) return;
     
-    setClasses(MOCK_DATA.classes);
-    setSubjects(MOCK_DATA.subjects);
-    
-    if (user?.role === 'admin') {
-      setTeachers(MOCK_DATA.teachers);
-      setStudents(MOCK_DATA.students);
+    try {
+      const classesRes = await fetch(`${API_ADMIN}?entity=classes`);
+      const classesData = await classesRes.json();
+      setClasses(classesData.data || []);
+      
+      const subjectsRes = await fetch(`${API_ADMIN}?entity=subjects`);
+      const subjectsData = await subjectsRes.json();
+      setSubjects(subjectsData.data || []);
+      
+      if (user?.role === 'admin') {
+        const teachersRes = await fetch(`${API_ADMIN}?entity=teachers`);
+        const teachersData = await teachersRes.json();
+        setTeachers(teachersData.data || []);
+        
+        const studentsRes = await fetch(`${API_ADMIN}?entity=students`);
+        const studentsData = await studentsRes.json();
+        setStudents(studentsData.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
     }
-    
-    setSchedule(MOCK_DATA.schedule);
-    setHomework(MOCK_DATA.homework);
   };
 
   const loadGrades = async () => {
     if (!selectedClass || !selectedSubject) return;
-    setGradesData(MOCK_DATA.grades);
+    
+    try {
+      const response = await fetch(`${API_GRADES}?class_id=${selectedClass}&subject_id=${selectedSubject}`);
+      const data = await response.json();
+      setGradesData(data.data || []);
+    } catch (error) {
+      console.error('Error loading grades:', error);
+    }
   };
 
   const loadSchedule = async () => {
