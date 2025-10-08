@@ -22,6 +22,29 @@ const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Чет�
 const EMOJIS = ['👤', '🎓', '📚', '✏️', '🌟', '🚀', '💼', '👨‍🏫', '👩‍🏫', '🧑‍🎓'];
 const COLORS = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
+const MOCK_DATA = {
+  classes: [
+    { id: 1, name: '10А', year: 2024 },
+    { id: 2, name: '11Б', year: 2024 }
+  ],
+  subjects: [
+    { id: 1, name: 'Математика' },
+    { id: 2, name: 'Русский язык' },
+    { id: 3, name: 'Физика' }
+  ],
+  teachers: [
+    { id: 1, full_name: 'Иванов Иван Иванович', login: 'teacher1', password: '123', user_id: 2 },
+    { id: 2, full_name: 'Петрова Мария Сергеевна', login: 'teacher2', password: '123', user_id: 3 }
+  ],
+  students: [
+    { id: 1, full_name: 'Сидоров Петр', login: 'student1', password: '123', class_name: '10А', class_id: 1 },
+    { id: 2, full_name: 'Иванова Анна', login: 'student2', password: '123', class_name: '10А', class_id: 1 }
+  ],
+  grades: [],
+  schedule: [],
+  homework: []
+};
+
 interface User {
   id: number;
   login: string;
@@ -120,88 +143,41 @@ export default function Index() {
   };
 
   const updateProfile = async () => {
-    try {
-      await fetch(API_PROFILE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user?.id,
-          avatar_color: selectedColor,
-          avatar_emoji: selectedEmoji
-        })
-      });
-      
-      if (user) {
-        setUser({ ...user, avatar_color: selectedColor, avatar_emoji: selectedEmoji });
-      }
-      
-      toast.success('Профиль обновлен');
-      setShowProfile(false);
-    } catch (error) {
-      toast.error('Ошибка обновления профиля');
+    if (user) {
+      setUser({ ...user, avatar_color: selectedColor, avatar_emoji: selectedEmoji });
     }
+    toast.success('Профиль обновлен');
+    setShowProfile(false);
   };
 
   const loadData = async () => {
     if (!isLoggedIn) return;
     
-    const classesRes = await fetch(`${API_ADMIN}?entity=classes`);
-    const classesData = await classesRes.json();
-    setClasses(classesData.data || []);
-    
-    const subjectsRes = await fetch(`${API_ADMIN}?entity=subjects`);
-    const subjectsData = await subjectsRes.json();
-    setSubjects(subjectsData.data || []);
+    setClasses(MOCK_DATA.classes);
+    setSubjects(MOCK_DATA.subjects);
     
     if (user?.role === 'admin') {
-      const teachersRes = await fetch(`${API_ADMIN}?entity=teachers`);
-      const teachersData = await teachersRes.json();
-      setTeachers(teachersData.data || []);
-      
-      const studentsRes = await fetch(`${API_ADMIN}?entity=students`);
-      const studentsData = await studentsRes.json();
-      setStudents(studentsData.data || []);
+      setTeachers(MOCK_DATA.teachers);
+      setStudents(MOCK_DATA.students);
     }
     
-    if (user?.role === 'teacher' && user.teacher_id) {
-      const tsRes = await fetch(`${API_ADMIN}?entity=teacher_subjects&teacher_id=${user.teacher_id}`);
-      const tsData = await tsRes.json();
-      setTeacherSubjects(tsData.data || []);
-    }
-    
-    if (user?.role === 'student' && user.class_id) {
-      const scheduleRes = await fetch(`${API_ADMIN}?entity=schedule&class_id=${user.class_id}`);
-      const scheduleData = await scheduleRes.json();
-      setSchedule(scheduleData.data || []);
-      
-      const homeworkRes = await fetch(`${API_ADMIN}?entity=homework&class_id=${user.class_id}`);
-      const homeworkData = await homeworkRes.json();
-      setHomework(homeworkData.data || []);
-    }
+    setSchedule(MOCK_DATA.schedule);
+    setHomework(MOCK_DATA.homework);
   };
 
   const loadGrades = async () => {
     if (!selectedClass || !selectedSubject) return;
-    
-    const response = await fetch(`${API_GRADES}?class_id=${selectedClass}&subject_id=${selectedSubject}`);
-    const data = await response.json();
-    setGradesData(data.data || []);
+    setGradesData(MOCK_DATA.grades);
   };
 
   const loadSchedule = async () => {
     if (!selectedClass) return;
-    
-    const response = await fetch(`${API_ADMIN}?entity=schedule&class_id=${selectedClass}`);
-    const data = await response.json();
-    setSchedule(data.data || []);
+    setSchedule(MOCK_DATA.schedule);
   };
 
   const loadHomework = async () => {
     if (!selectedClass) return;
-    
-    const response = await fetch(`${API_ADMIN}?entity=homework&class_id=${selectedClass}`);
-    const data = await response.json();
-    setHomework(data.data || []);
+    setHomework(MOCK_DATA.homework);
   };
 
   useEffect(() => {
@@ -225,36 +201,11 @@ export default function Index() {
   }, [selectedClass]);
 
   const addGrade = async (studentId: number, grade: number) => {
-    try {
-      await fetch(API_GRADES, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          student_id: studentId,
-          subject_id: selectedSubject,
-          teacher_id: user?.teacher_id,
-          grade: grade,
-          grade_date: new Date().toISOString().split('T')[0],
-          comment: ''
-        })
-      });
-      toast.success('Оценка добавлена');
-      loadGrades();
-    } catch (error) {
-      toast.error('Ошибка добавления оценки');
-    }
+    toast.success('Оценка добавлена (mock режим)');
   };
 
   const deleteGrade = async (gradeId: number) => {
-    try {
-      await fetch(`${API_GRADES}?id=${gradeId}`, {
-        method: 'DELETE'
-      });
-      toast.success('Оценка удалена');
-      loadGrades();
-    } catch (error) {
-      toast.error('Ошибка удаления оценки');
-    }
+    toast.success('Оценка удалена (mock режим)');
   };
 
   const updateGradeComment = async (gradeId: number, comment: string) => {
@@ -273,29 +224,11 @@ export default function Index() {
   };
 
   const createEntity = async (entity: string, data: any) => {
-    try {
-      await fetch(`${API_ADMIN}?entity=${entity}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      toast.success('Создано');
-      loadData();
-    } catch (error) {
-      toast.error('Ошибка создания');
-    }
+    toast.success('Создано (mock режим)');
   };
 
   const deleteEntity = async (entity: string, id: number) => {
-    try {
-      await fetch(`${API_ADMIN}?entity=${entity}&id=${id}`, {
-        method: 'DELETE'
-      });
-      toast.success('Удалено');
-      loadData();
-    } catch (error) {
-      toast.error('Ошибка удаления');
-    }
+    toast.success('Удалено (mock режим)');
   };
 
   if (!isLoggedIn) {
