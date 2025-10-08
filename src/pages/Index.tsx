@@ -165,6 +165,9 @@ export default function Index() {
 
   useEffect(() => {
     loadData();
+    if (user?.role === 'student' && user?.class_id) {
+      setSelectedClass(user.class_id);
+    }
   }, [isLoggedIn, user]);
 
   useEffect(() => {
@@ -172,6 +175,13 @@ export default function Index() {
       loadGrades();
     }
   }, [selectedClass, selectedSubject]);
+
+  useEffect(() => {
+    if (selectedClass) {
+      loadSchedule();
+      loadHomework();
+    }
+  }, [selectedClass]);
 
   const addGrade = async (studentId: number, grade: number) => {
     try {
@@ -945,6 +955,37 @@ function ScheduleGrid({ classId, schedule, deleteEntity, loadData }: any) {
 
 function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, selectedClass, setSelectedClass, selectedSubject, setSelectedSubject, addGrade, deleteGrade, schedule, homework, loadSchedule, loadHomework, createEntity }: any) {
   const [homeworkForm, setHomeworkForm] = useState({ class_id: '', subject_id: '', description: '', due_date: '' });
+  const [editingHomework, setEditingHomework] = useState<any>(null);
+
+  const updateHomework = async (hw: any) => {
+    try {
+      await fetch(`${API_HOMEWORK}?id=${hw.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: hw.description,
+          due_date: hw.due_date
+        })
+      });
+      toast.success('Задание обновлено');
+      setEditingHomework(null);
+      loadHomework();
+    } catch (error) {
+      toast.error('Ошибка обновления');
+    }
+  };
+
+  const deleteHomework = async (homeworkId: number) => {
+    try {
+      await fetch(`${API_HOMEWORK}?id=${homeworkId}`, {
+        method: 'DELETE'
+      });
+      toast.success('Задание удалено');
+      loadHomework();
+    } catch (error) {
+      toast.error('Ошибка удаления');
+    }
+  };
 
   return (
     <Tabs defaultValue="grades" className="space-y-6">
@@ -1134,19 +1175,53 @@ function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, se
                 ) : (
                   homework.map((hw: any) => (
                     <div key={hw.id} className="p-4 border rounded-lg hover:bg-gray-50 transition">
-                      <div className="flex justify-between items-start mb-2">
-                        <Badge variant="secondary">{hw.subject_name}</Badge>
-                        <span className="text-xs text-gray-500">{hw.class_name}</span>
-                      </div>
-                      <p className="text-sm text-gray-700 mb-2">{hw.description}</p>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-gray-500">Срок: {new Date(hw.due_date).toLocaleDateString('ru-RU')}</span>
-                        <span className={`font-medium ${
-                          new Date(hw.due_date) < new Date() ? 'text-red-600' : 'text-green-600'
-                        }`}>
-                          {new Date(hw.due_date) < new Date() ? 'Просрочено' : 'Активно'}
-                        </span>
-                      </div>
+                      {editingHomework?.id === hw.id ? (
+                        <div className="space-y-3">
+                          <Textarea 
+                            value={editingHomework.description}
+                            onChange={(e) => setEditingHomework({...editingHomework, description: e.target.value})}
+                            rows={3}
+                          />
+                          <Input 
+                            type="date"
+                            value={editingHomework.due_date}
+                            onChange={(e) => setEditingHomework({...editingHomework, due_date: e.target.value})}
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => updateHomework(editingHomework)} className="flex-1">
+                              <Icon name="Check" size={14} className="mr-1" />
+                              Сохранить
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setEditingHomework(null)} className="flex-1">
+                              <Icon name="X" size={14} className="mr-1" />
+                              Отмена
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-start mb-2">
+                            <Badge variant="secondary">{hw.subject_name}</Badge>
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => setEditingHomework(hw)}>
+                                <Icon name="Edit" size={14} />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => deleteHomework(hw.id)}>
+                                <Icon name="Trash2" size={14} className="text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-700 mb-2">{hw.description}</p>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-gray-500">Срок: {new Date(hw.due_date).toLocaleDateString('ru-RU')}</span>
+                            <span className={`font-medium ${
+                              new Date(hw.due_date) < new Date() ? 'text-red-600' : 'text-green-600'
+                            }`}>
+                              {new Date(hw.due_date) < new Date() ? 'Просрочено' : 'Активно'}
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))
                 )}
@@ -1351,20 +1426,41 @@ function StudentPanel({ user, subjects, schedule, homework, gradesData, selected
         <Card>
           <CardHeader>
             <CardTitle>Домашние задания</CardTitle>
+            <CardDescription>Актуальные задания по предметам</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {homework.map((hw: any) => (
-                <div key={hw.id} className="p-4 border rounded-lg">
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge>{hw.subject_name}</Badge>
-                    <span className="text-sm text-gray-500">до {new Date(hw.due_date).toLocaleDateString('ru-RU')}</span>
-                  </div>
-                  <p className="text-gray-700">{hw.description}</p>
-                  <p className="text-sm text-gray-500 mt-2">Учитель: {hw.teacher_name}</p>
-                </div>
-              ))}
-            </div>
+            {homework.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <Icon name="CheckCircle" size={64} className="mx-auto mb-3 opacity-30 text-green-500" />
+                <p>Нет домашних заданий</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {homework.map((hw: any) => {
+                  const isOverdue = new Date(hw.due_date) < new Date();
+                  return (
+                    <div key={hw.id} className={`p-4 border rounded-lg ${isOverdue ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <Badge variant={isOverdue ? "destructive" : "secondary"}>{hw.subject_name}</Badge>
+                        <span className={`text-sm font-medium ${isOverdue ? 'text-red-600' : 'text-green-600'}`}>
+                          до {new Date(hw.due_date).toLocaleDateString('ru-RU')}
+                        </span>
+                      </div>
+                      <p className="text-gray-700 mb-2">{hw.description}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-600">
+                          <Icon name="User" size={14} className="inline mr-1" />
+                          {hw.teacher_name}
+                        </p>
+                        {isOverdue && (
+                          <Badge variant="destructive" className="text-xs">Просрочено</Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </TabsContent>
@@ -1372,28 +1468,52 @@ function StudentPanel({ user, subjects, schedule, homework, gradesData, selected
       <TabsContent value="schedule">
         <Card>
           <CardHeader>
-            <CardTitle>Расписание</CardTitle>
+            <CardTitle>Моё расписание</CardTitle>
+            <CardDescription>Расписание уроков на неделю</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              {DAYS.map((day, idx) => (
-                <div key={idx} className="space-y-2">
-                  <h3 className="font-semibold text-lg">{day}</h3>
-                  {schedule
+            {schedule.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <Icon name="Calendar" size={64} className="mx-auto mb-3 opacity-30" />
+                <p>Расписание ещё не составлено</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {DAYS.map((day, idx) => {
+                  const dayLessons = schedule
                     .filter((s: any) => s.day_of_week === idx + 1)
-                    .sort((a: any, b: any) => a.lesson_number - b.lesson_number)
-                    .map((item: any) => (
-                      <div key={item.id} className="p-3 bg-blue-50 rounded-lg">
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{item.lesson_number}. {item.subject_name}</span>
-                          <Badge variant="secondary">{item.teacher_name}</Badge>
+                    .sort((a: any, b: any) => a.lesson_number - b.lesson_number);
+                  return (
+                    <div key={idx} className="border rounded-lg p-4 bg-gray-50">
+                      <h3 className="font-semibold text-lg mb-3 flex items-center">
+                        <Icon name="Calendar" size={18} className="mr-2 text-primary" />
+                        {day}
+                        {dayLessons.length > 0 && (
+                          <Badge variant="outline" className="ml-auto text-xs">{dayLessons.length}</Badge>
+                        )}
+                      </h3>
+                      {dayLessons.length === 0 ? (
+                        <p className="text-sm text-gray-500 italic text-center py-3">Выходной</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {dayLessons.map((item: any) => (
+                            <div key={item.id} className="p-3 bg-white rounded-lg border-l-4 border-primary">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="secondary" className="text-xs">№{item.lesson_number}</Badge>
+                              </div>
+                              <div className="font-medium text-sm">{item.subject_name}</div>
+                              {item.teacher_name && (
+                                <div className="text-xs text-gray-600 mt-1">{item.teacher_name}</div>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      </div>
-                    ))
-                  }
-                </div>
-              ))}
-            </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </TabsContent>
