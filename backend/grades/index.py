@@ -16,7 +16,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'statusCode': 200,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type',
                 'Access-Control-Max-Age': '86400'
             },
@@ -114,33 +114,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
                 'isBase64Encoded': False,
                 'body': json.dumps({'success': True, 'id': new_id})
-            }
-        
-        elif method == 'PUT':
-            grade_id = params.get('id')
-            body_data = json.loads(event.get('body', '{}'))
-            comment = body_data.get('comment', '')
-            
-            if not grade_id:
-                cur.close()
-                conn.close()
-                return {
-                    'statusCode': 400,
-                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                    'isBase64Encoded': False,
-                    'body': json.dumps({'error': 'grade id required'})
-                }
-            
-            cur.execute("UPDATE grades SET comment = %s WHERE id = %s", (comment, grade_id))
-            conn.commit()
-            cur.close()
-            conn.close()
-            
-            return {
-                'statusCode': 200,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'isBase64Encoded': False,
-                'body': json.dumps({'success': True})
             }
         
         elif method == 'DELETE':

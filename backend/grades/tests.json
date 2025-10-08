@@ -9,19 +9,6 @@
         "data": "array"
       },
       "bodyMatcher": "partial"
-    },
-    {
-      "name": "Update grade comment",
-      "method": "PUT",
-      "path": "/?id=1",
-      "body": {
-        "comment": "Хорошая работа!"
-      },
-      "expectedStatus": 200,
-      "expectedBody": {
-        "success": true
-      },
-      "bodyMatcher": "partial"
     }
   ]
 }

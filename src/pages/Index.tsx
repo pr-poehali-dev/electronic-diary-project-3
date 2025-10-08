@@ -54,7 +54,6 @@ export default function Index() {
 
   const [selectedClass, setSelectedClass] = useState<number | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
-  const [editingGradeComment, setEditingGradeComment] = useState<{id: number, comment: string} | null>(null);
 
   const handleLogin = async () => {
     try {
@@ -214,21 +213,6 @@ export default function Index() {
       loadGrades();
     } catch (error) {
       toast.error('Ошибка удаления оценки');
-    }
-  };
-
-  const updateGradeComment = async (gradeId: number, comment: string) => {
-    try {
-      await fetch(`${API_GRADES}?id=${gradeId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comment })
-      });
-      toast.success('Примечание обновлено');
-      setEditingGradeComment(null);
-      loadGrades();
-    } catch (error) {
-      toast.error('Ошибка обновления примечания');
     }
   };
 
@@ -1169,66 +1153,32 @@ function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, se
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
                             {student.grades.map((g: any, idx: number) => (
-                              <Dialog key={idx}>
-                                <DialogTrigger asChild>
-                                  <div 
-                                    className="relative group cursor-pointer"
-                                  >
-                                    <span 
-                                      className={`inline-flex items-center justify-center w-8 h-8 rounded text-sm font-semibold relative ${
-                                        g.grade === 5 ? 'bg-green-100 text-green-800' :
-                                        g.grade === 4 ? 'bg-blue-100 text-blue-800' :
-                                        g.grade === 3 ? 'bg-yellow-100 text-yellow-800' :
-                                        'bg-red-100 text-red-800'
-                                      }`}
-                                      title={`Дата: ${new Date(g.date).toLocaleDateString('ru-RU')}${g.comment ? '\nПримечание: ' + g.comment : ''}`}
-                                    >
-                                      {g.grade}
-                                      {g.comment && (
-                                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
-                                          <Icon name="MessageCircle" size={8} className="text-white" />
-                                        </span>
-                                      )}
-                                    </span>
-                                  </div>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Оценка {g.grade} - {student.student_name}</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="space-y-4">
-                                    <div>
-                                      <Label>Дата</Label>
-                                      <div className="text-sm text-gray-600">{new Date(g.date).toLocaleDateString('ru-RU')}</div>
-                                    </div>
-                                    <div>
-                                      <Label>Примечание</Label>
-                                      <Textarea 
-                                        placeholder="Добавьте комментарий к оценке..."
-                                        defaultValue={g.comment || ''}
-                                        onChange={(e) => setEditingGradeComment({id: g.id, comment: e.target.value})}
-                                        rows={3}
-                                      />
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <Button 
-                                        onClick={() => updateGradeComment(editingGradeComment?.id || g.id, editingGradeComment?.comment || g.comment || '')}
-                                        className="flex-1"
-                                      >
-                                        <Icon name="Save" size={16} className="mr-2" />
-                                        Сохранить
-                                      </Button>
-                                      <Button 
-                                        variant="destructive"
-                                        onClick={() => deleteGrade(g.id)}
-                                      >
-                                        <Icon name="Trash2" size={16} className="mr-2" />
-                                        Удалить
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
+                              <div 
+                                key={idx}
+                                className="relative group"
+                                title={`Дата: ${new Date(g.date).toLocaleDateString('ru-RU')}`}
+                              >
+                                <span 
+                                  className={`inline-flex items-center justify-center w-8 h-8 rounded text-sm font-semibold cursor-help ${
+                                    g.grade === 5 ? 'bg-green-100 text-green-800' :
+                                    g.grade === 4 ? 'bg-blue-100 text-blue-800' :
+                                    g.grade === 3 ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}
+                                >
+                                  {g.grade}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteGrade(g.id);
+                                  }}
+                                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs font-bold shadow-sm"
+                                  title="Удалить оценку"
+                                >
+                                  ×
+                                </button>
+                              </div>
                             ))}
                           </div>
                         </TableCell>
