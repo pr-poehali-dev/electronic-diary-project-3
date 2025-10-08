@@ -258,6 +258,23 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 conn.commit()
                 result = {'success': True}
             
+            elif entity == 'schedule':
+                class_id = body_data.get('class_id')
+                day_of_week = body_data.get('day_of_week')
+                lesson_number = body_data.get('lesson_number')
+                subject_id = body_data.get('subject_id')
+                teacher_id = body_data.get('teacher_id')
+                
+                cur.execute("""
+                    UPDATE schedule 
+                    SET class_id = %s, day_of_week = %s, lesson_number = %s, 
+                        subject_id = %s, teacher_id = %s
+                    WHERE id = %s
+                """, (class_id, day_of_week, lesson_number, subject_id, teacher_id, entity_id))
+                
+                conn.commit()
+                result = {'success': True}
+            
             else:
                 result = {'success': False, 'error': 'Unknown entity'}
             

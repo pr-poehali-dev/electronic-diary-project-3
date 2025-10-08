@@ -901,7 +901,60 @@ function AdminPanel({ classes, subjects, teachers, students, createEntity, delet
 }
 
 function ScheduleGrid({ classId, schedule, deleteEntity, loadData }: any) {
+  const [editingLesson, setEditingLesson] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ lesson_number: '', subject_id: '', teacher_id: '' });
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const token = localStorage.getItem('authToken');
+      const [subjectsRes, teachersRes] = await Promise.all([
+        fetch(`${API_ADMIN}?entity=subjects`, { headers: { 'X-Auth-Token': token || '' } }),
+        fetch(`${API_ADMIN}?entity=teachers`, { headers: { 'X-Auth-Token': token || '' } })
+      ]);
+      if (subjectsRes.ok) setSubjects(await subjectsRes.json());
+      if (teachersRes.ok) setTeachers(await teachersRes.json());
+    };
+    fetchData();
+  }, []);
+
   const classSchedule = schedule.filter((s: any) => s.class_id === classId);
+
+  const startEdit = (lesson: any) => {
+    setEditingLesson(lesson);
+    setEditForm({
+      lesson_number: lesson.lesson_number.toString(),
+      subject_id: lesson.subject_id.toString(),
+      teacher_id: lesson.teacher_id.toString()
+    });
+  };
+
+  const saveEdit = async () => {
+    const token = localStorage.getItem('authToken');
+    try {
+      const res = await fetch(`${API_ADMIN}?entity=schedule&id=${editingLesson.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token || '' },
+        body: JSON.stringify({
+          class_id: editingLesson.class_id,
+          day_of_week: editingLesson.day_of_week,
+          lesson_number: parseInt(editForm.lesson_number),
+          subject_id: parseInt(editForm.subject_id),
+          teacher_id: parseInt(editForm.teacher_id)
+        })
+      });
+      if (res.ok) {
+        toast.success('Урок обновлён');
+        setEditingLesson(null);
+        loadData();
+      } else {
+        toast.error('Ошибка при обновлении');
+      }
+    } catch (err) {
+      toast.error('Ошибка при обновлении');
+    }
+  };
   
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -922,26 +975,72 @@ function ScheduleGrid({ classId, schedule, deleteEntity, loadData }: any) {
             ) : (
               <div className="space-y-2">
                 {dayLessons.map((item: any) => (
-                  <div key={item.id} className="p-3 bg-white rounded-lg border hover:border-primary transition flex justify-between items-center">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="secondary" className="text-xs">Урок {item.lesson_number}</Badge>
+                  <div key={item.id} className="p-3 bg-white rounded-lg border hover:border-primary transition">
+                    {editingLesson?.id === item.id ? (
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <Input 
+                            type="number" 
+                            value={editForm.lesson_number}
+                            onChange={(e) => setEditForm({...editForm, lesson_number: e.target.value})}
+                            placeholder="№ урока"
+                            className="w-24"
+                          />
+                          <Select value={editForm.subject_id} onValueChange={(v) => setEditForm({...editForm, subject_id: v})}>
+                            <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {subjects.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Select value={editForm.teacher_id} onValueChange={(v) => setEditForm({...editForm, teacher_id: v})}>
+                          <SelectTrigger><SelectValue placeholder="Учитель" /></SelectTrigger>
+                          <SelectContent>
+                            {teachers.map((t: any) => <SelectItem key={t.id} value={t.id.toString()}>{t.full_name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={saveEdit} className="flex-1">
+                            <Icon name="Check" size={14} className="mr-1" />
+                            Сохранить
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setEditingLesson(null)}>
+                            Отмена
+                          </Button>
+                        </div>
                       </div>
-                      <div className="font-medium">{item.subject_name}</div>
-                      {item.teacher_name && (
-                        <div className="text-xs text-gray-600 mt-1">{item.teacher_name}</div>
-                      )}
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={async () => {
-                        await deleteEntity('schedule', item.id);
-                        loadData();
-                      }}
-                    >
-                      <Icon name="Trash2" size={14} className="text-red-500" />
-                    </Button>
+                    ) : (
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="secondary" className="text-xs">Урок {item.lesson_number}</Badge>
+                          </div>
+                          <div className="font-medium">{item.subject_name}</div>
+                          {item.teacher_name && (
+                            <div className="text-xs text-gray-600 mt-1">{item.teacher_name}</div>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => startEdit(item)}
+                          >
+                            <Icon name="Pencil" size={14} className="text-blue-500" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={async () => {
+                              await deleteEntity('schedule', item.id);
+                              loadData();
+                            }}
+                          >
+                            <Icon name="Trash2" size={14} className="text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
