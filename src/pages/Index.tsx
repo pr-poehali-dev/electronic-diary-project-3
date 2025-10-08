@@ -1186,59 +1186,6 @@ function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, se
   );
 }
 
-function ScheduleGrid({ classId, schedule, deleteEntity, loadData }: any) {
-  const classSchedule = schedule.filter((s: any) => s.class_id === classId);
-  
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {DAYS.map((day, idx) => {
-        const dayLessons = classSchedule
-          .filter((s: any) => s.day_of_week === idx + 1)
-          .sort((a: any, b: any) => a.lesson_number - b.lesson_number);
-        
-        return (
-          <div key={idx} className="border rounded-lg p-4 bg-gray-50">
-            <h3 className="font-semibold text-lg mb-3 flex items-center">
-              <Icon name="Calendar" size={18} className="mr-2 text-primary" />
-              {day}
-              <Badge variant="outline" className="ml-auto">{dayLessons.length} уроков</Badge>
-            </h3>
-            {dayLessons.length === 0 ? (
-              <p className="text-sm text-gray-500 italic text-center py-4">Нет уроков</p>
-            ) : (
-              <div className="space-y-2">
-                {dayLessons.map((item: any) => (
-                  <div key={item.id} className="p-3 bg-white rounded-lg border hover:border-primary transition flex justify-between items-center">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="secondary" className="text-xs">Урок {item.lesson_number}</Badge>
-                      </div>
-                      <div className="font-medium">{item.subject_name}</div>
-                      {item.teacher_name && (
-                        <div className="text-xs text-gray-600 mt-1">{item.teacher_name}</div>
-                      )}
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={async () => {
-                        await deleteEntity('schedule', item.id);
-                        loadData();
-                      }}
-                    >
-                      <Icon name="Trash2" size={14} className="text-red-500" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 function ClassStatsCard({ classData, loadClassStats }: any) {
   const [stats, setStats] = useState<any>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -1421,58 +1368,5 @@ function StudentPanel({ user, subjects, schedule, homework, gradesData, selected
         </Card>
       </TabsContent>
     </Tabs>
-  );
-}
-
-function ScheduleGrid({ classId, schedule, deleteEntity, loadData }: any) {
-  const classSchedule = schedule.filter((s: any) => s.class_id === classId);
-  
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {DAYS.map((day, idx) => {
-        const dayLessons = classSchedule
-          .filter((s: any) => s.day_of_week === idx + 1)
-          .sort((a: any, b: any) => a.lesson_number - b.lesson_number);
-        
-        return (
-          <div key={idx} className="border rounded-lg p-4 bg-gray-50">
-            <h3 className="font-semibold text-lg mb-3 flex items-center">
-              <Icon name="Calendar" size={18} className="mr-2 text-primary" />
-              {day}
-              <Badge variant="outline" className="ml-auto">{dayLessons.length} уроков</Badge>
-            </h3>
-            {dayLessons.length === 0 ? (
-              <p className="text-sm text-gray-500 italic text-center py-4">Нет уроков</p>
-            ) : (
-              <div className="space-y-2">
-                {dayLessons.map((item: any) => (
-                  <div key={item.id} className="p-3 bg-white rounded-lg border hover:border-primary transition flex justify-between items-center">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="secondary" className="text-xs">Урок {item.lesson_number}</Badge>
-                      </div>
-                      <div className="font-medium">{item.subject_name}</div>
-                      {item.teacher_name && (
-                        <div className="text-xs text-gray-600 mt-1">{item.teacher_name}</div>
-                      )}
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={async () => {
-                        await deleteEntity('schedule', item.id);
-                        loadData();
-                      }}
-                    >
-                      <Icon name="Trash2" size={14} className="text-red-500" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
   );
 }
