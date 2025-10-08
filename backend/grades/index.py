@@ -16,7 +16,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'statusCode': 200,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type',
                 'Access-Control-Max-Age': '86400'
             },
@@ -59,14 +59,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 student_name = student[1]
                 
                 cur.execute("""
-                    SELECT grade, grade_date, comment
+                    SELECT id, grade, grade_date, comment
                     FROM grades
                     WHERE student_id = %s AND subject_id = %s
                     ORDER BY grade_date
                 """, (student_id, subject_id))
                 grades_rows = cur.fetchall()
                 
-                grades = [{'grade': g[0], 'date': str(g[1]), 'comment': g[2]} for g in grades_rows]
+                grades = [{'id': g[0], 'grade': g[1], 'date': str(g[2]), 'comment': g[3]} for g in grades_rows]
                 
                 avg_grade = 0
                 if grades:
@@ -114,6 +114,31 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
                 'isBase64Encoded': False,
                 'body': json.dumps({'success': True, 'id': new_id})
+            }
+        
+        elif method == 'DELETE':
+            grade_id = params.get('id')
+            
+            if not grade_id:
+                cur.close()
+                conn.close()
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'isBase64Encoded': False,
+                    'body': json.dumps({'error': 'grade id required'})
+                }
+            
+            cur.execute("DELETE FROM grades WHERE id = %s", (grade_id,))
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'isBase64Encoded': False,
+                'body': json.dumps({'success': True})
             }
         
         else:

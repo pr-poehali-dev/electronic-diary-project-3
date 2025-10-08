@@ -194,6 +194,18 @@ export default function Index() {
     }
   };
 
+  const deleteGrade = async (gradeId: number) => {
+    try {
+      await fetch(`${API_GRADES}?id=${gradeId}`, {
+        method: 'DELETE'
+      });
+      toast.success('Оценка удалена');
+      loadGrades();
+    } catch (error) {
+      toast.error('Ошибка удаления оценки');
+    }
+  };
+
   const createEntity = async (entity: string, data: any) => {
     try {
       await fetch(`${API_ADMIN}?entity=${entity}`, {
@@ -321,6 +333,7 @@ export default function Index() {
           selectedSubject={selectedSubject}
           setSelectedSubject={setSelectedSubject}
           addGrade={addGrade}
+          deleteGrade={deleteGrade}
           schedule={schedule}
           homework={homework}
           loadSchedule={loadSchedule}
@@ -930,7 +943,7 @@ function ScheduleGrid({ classId, schedule, deleteEntity, loadData }: any) {
   );
 }
 
-function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, selectedClass, setSelectedClass, selectedSubject, setSelectedSubject, addGrade, schedule, homework, loadSchedule, loadHomework, createEntity }: any) {
+function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, selectedClass, setSelectedClass, selectedSubject, setSelectedSubject, addGrade, deleteGrade, schedule, homework, loadSchedule, loadHomework, createEntity }: any) {
   const [homeworkForm, setHomeworkForm] = useState({ class_id: '', subject_id: '', description: '', due_date: '' });
 
   return (
@@ -990,17 +1003,32 @@ function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, se
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
                             {student.grades.map((g: any, idx: number) => (
-                              <span 
+                              <div 
                                 key={idx}
-                                className={`inline-flex items-center justify-center w-8 h-8 rounded text-sm font-semibold ${
-                                  g.grade === 5 ? 'bg-green-100 text-green-800' :
-                                  g.grade === 4 ? 'bg-blue-100 text-blue-800' :
-                                  g.grade === 3 ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-red-100 text-red-800'
-                                }`}
+                                className="relative group"
+                                title={`Дата: ${new Date(g.date).toLocaleDateString('ru-RU')}`}
                               >
-                                {g.grade}
-                              </span>
+                                <span 
+                                  className={`inline-flex items-center justify-center w-8 h-8 rounded text-sm font-semibold cursor-help ${
+                                    g.grade === 5 ? 'bg-green-100 text-green-800' :
+                                    g.grade === 4 ? 'bg-blue-100 text-blue-800' :
+                                    g.grade === 3 ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}
+                                >
+                                  {g.grade}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteGrade(g.id);
+                                  }}
+                                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs font-bold shadow-sm"
+                                  title="Удалить оценку"
+                                >
+                                  ×
+                                </button>
+                              </div>
                             ))}
                           </div>
                         </TableCell>
