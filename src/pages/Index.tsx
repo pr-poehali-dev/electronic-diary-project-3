@@ -13,10 +13,10 @@ import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 
 const API_AUTH = 'https://functions.poehali.dev/1fa274be-9623-4944-98ad-cbb58e600c51';
-const API_ADMIN = 'https://functions.poehali.dev/a9a76387-8a57-449e-8024-e988072be345';
+const API_ADMIN = 'https://functions.poehali.dev/1f5e95c9-45e0-4ba9-85a3-2f0e1e8e1b44';
 const API_GRADES = 'https://functions.poehali.dev/1de964af-0e0e-4343-b359-f7ca46b4b3b6';
-const API_HOMEWORK = 'https://functions.poehali.dev/faf9939d-e0eb-4ff2-9aa2-65118e9ecbea';
-const API_PROFILE = 'https://functions.poehali.dev/6396f4b3-2a6f-4f99-932c-f49db097cc22';
+const API_HOMEWORK = 'https://functions.poehali.dev/61f93ab8-f34e-4bf8-83a2-fe4ebb14d1f0';
+const API_PROFILE = 'https://functions.poehali.dev/bd72a7a6-c3c1-48b1-9464-df35fd623cf9';
 
 const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 const EMOJIS = ['👤', '🎓', '📚', '✏️', '🌟', '🚀', '💼', '👨‍🏫', '👩‍🏫', '🧑‍🎓'];
