@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "name": "Get grades for class",
+      "method": "GET",
+      "path": "/?class_id=1&subject_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "data": "array"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

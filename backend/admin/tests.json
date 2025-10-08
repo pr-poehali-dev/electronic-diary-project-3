@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "Create new class",
+      "method": "POST",
+      "path": "/?entity=class",
+      "body": {
+        "name": "11А",
+        "year": 2025
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get all classes",
+      "method": "GET",
+      "path": "/?entity=classes",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "data": "array"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
