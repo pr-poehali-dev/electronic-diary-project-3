@@ -137,6 +137,40 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     """)
                     rows = cur.fetchall()
                     data = [{'id': r[0], 'description': r[1], 'due_date': str(r[2]), 'class_name': r[3], 'subject_name': r[4], 'teacher_name': r[5], 'class_id': r[6]} for r in rows]
+            
+            elif entity == 'stats':
+                class_id = params.get('class_id')
+                
+                if class_id:
+                    cur.execute("""
+                        SELECT 
+                            COUNT(DISTINCT s.id) as student_count,
+                            COUNT(DISTINCT g.id) as total_grades,
+                            COALESCE(AVG(g.grade), 0) as avg_grade
+                        FROM students s
+                        LEFT JOIN grades g ON s.id = g.student_id
+                        WHERE s.class_id = %s
+                    """, (class_id,))
+                    row = cur.fetchone()
+                    data = {'student_count': row[0], 'total_grades': row[1], 'avg_grade': float(row[2])}
+                else:
+                    cur.execute("""
+                        SELECT 
+                            (SELECT COUNT(*) FROM students) as total_students,
+                            (SELECT COUNT(*) FROM teachers) as total_teachers,
+                            (SELECT COUNT(*) FROM classes) as total_classes,
+                            (SELECT COUNT(*) FROM subjects) as total_subjects,
+                            COALESCE(AVG(grade), 0) as overall_avg
+                        FROM grades
+                    """)
+                    row = cur.fetchone()
+                    data = {
+                        'total_students': row[0],
+                        'total_teachers': row[1],
+                        'total_classes': row[2],
+                        'total_subjects': row[3],
+                        'overall_avg': float(row[4])
+                    }
                 
             else:
                 data = []
@@ -182,6 +216,59 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
                 'isBase64Encoded': False,
                 'body': json.dumps({'success': True})
+            }
+        
+        elif method == 'PUT':
+            body_data = json.loads(event.get('body', '{}'))
+            entity_id = params.get('id')
+            
+            if entity == 'teacher':
+                user_id = body_data.get('user_id')
+                full_name = body_data.get('full_name')
+                login = body_data.get('login')
+                password = body_data.get('password')
+                
+                cur.execute("""
+                    UPDATE users 
+                    SET full_name = %s, login = %s, password = %s
+                    WHERE id = %s
+                """, (full_name, login, password, user_id))
+                conn.commit()
+                result = {'success': True}
+            
+            elif entity == 'student':
+                user_id = body_data.get('user_id')
+                full_name = body_data.get('full_name')
+                login = body_data.get('login')
+                password = body_data.get('password')
+                class_id = body_data.get('class_id')
+                
+                cur.execute("""
+                    UPDATE users 
+                    SET full_name = %s, login = %s, password = %s
+                    WHERE id = %s
+                """, (full_name, login, password, user_id))
+                
+                cur.execute("""
+                    UPDATE students 
+                    SET class_id = %s
+                    WHERE user_id = %s
+                """, (class_id, user_id))
+                
+                conn.commit()
+                result = {'success': True}
+            
+            else:
+                result = {'success': False, 'error': 'Unknown entity'}
+            
+            cur.close()
+            conn.close()
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'isBase64Encoded': False,
+                'body': json.dumps(result)
             }
         
         elif method == 'POST':

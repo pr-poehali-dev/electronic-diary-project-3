@@ -401,10 +401,59 @@ function AdminPanel({ classes, subjects, teachers, students, createEntity, delet
   const [scheduleForm, setScheduleForm] = useState({ class_id: '', subject_id: '', teacher_id: '', day_of_week: 1, lesson_number: 1 });
   const [selectedTeacher, setSelectedTeacher] = useState<number | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
+  const [editingTeacher, setEditingTeacher] = useState<any>(null);
+  const [editingStudent, setEditingStudent] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [selectedClassForStats, setSelectedClassForStats] = useState<number | null>(null);
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      const res = await fetch(`${API_ADMIN}?entity=stats`);
+      const data = await res.json();
+      setStats(data.data);
+    } catch (error) {
+      console.error('Error loading stats');
+    }
+  };
+
+  const loadClassStats = async (classId: number) => {
+    try {
+      const res = await fetch(`${API_ADMIN}?entity=stats&class_id=${classId}`);
+      const data = await res.json();
+      return data.data;
+    } catch (error) {
+      console.error('Error loading class stats');
+      return null;
+    }
+  };
+
+  const updateUser = async (entity: string, userData: any) => {
+    try {
+      await fetch(`${API_ADMIN}?entity=${entity}&id=${userData.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      toast.success('Обновлено');
+      loadData();
+      setEditingTeacher(null);
+      setEditingStudent(null);
+    } catch (error) {
+      toast.error('Ошибка обновления');
+    }
+  };
 
   return (
-    <Tabs defaultValue="users" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-4">
+    <Tabs defaultValue="stats" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-5">
+        <TabsTrigger value="stats">
+          <Icon name="BarChart3" size={16} className="mr-2" />
+          Статистика
+        </TabsTrigger>
         <TabsTrigger value="users">
           <Icon name="Users" size={16} className="mr-2" />
           Пользователи
@@ -422,6 +471,56 @@ function AdminPanel({ classes, subjects, teachers, students, createEntity, delet
           Расписание
         </TabsTrigger>
       </TabsList>
+
+      <TabsContent value="stats" className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Всего учеников</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-600">{stats?.total_students || 0}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Всего учителей</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">{stats?.total_teachers || 0}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Всего классов</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-purple-600">{stats?.total_classes || 0}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Средний балл</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-orange-600">{stats?.overall_avg ? stats.overall_avg.toFixed(2) : '0.00'}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Статистика по классам</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3">
+              {classes.map((c: any) => (
+                <ClassStatsCard key={c.id} classData={c} loadClassStats={loadClassStats} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
       <TabsContent value="users" className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
@@ -452,6 +551,38 @@ function AdminPanel({ classes, subjects, teachers, students, createEntity, delet
                       <div className="text-sm text-gray-500">Пароль: {t.password}</div>
                     </div>
                     <div className="flex gap-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Icon name="Edit" size={14} />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Редактировать учителя</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-3">
+                            <Input 
+                              defaultValue={t.full_name} 
+                              placeholder="ФИО"
+                              onChange={(e) => setEditingTeacher({...t, full_name: e.target.value})}
+                            />
+                            <Input 
+                              defaultValue={t.login} 
+                              placeholder="Логин"
+                              onChange={(e) => setEditingTeacher({...editingTeacher, login: e.target.value})}
+                            />
+                            <Input 
+                              defaultValue={t.password} 
+                              placeholder="Пароль"
+                              onChange={(e) => setEditingTeacher({...editingTeacher, password: e.target.value})}
+                            />
+                            <Button onClick={() => updateUser('teacher', editingTeacher || t)} className="w-full">
+                              Сохранить
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button size="sm" variant="outline" onClick={() => setSelectedTeacher(t.id)}>
@@ -526,9 +657,52 @@ function AdminPanel({ classes, subjects, teachers, students, createEntity, delet
                       <div className="text-sm text-gray-500">Пароль: {s.password}</div>
                       {s.class_name && <Badge variant="secondary" className="mt-1">{s.class_name}</Badge>}
                     </div>
-                    <Button size="sm" variant="destructive" onClick={() => deleteEntity('student', s.id)}>
-                      <Icon name="Trash2" size={14} />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Icon name="Edit" size={14} />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Редактировать ученика</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-3">
+                            <Input 
+                              defaultValue={s.full_name} 
+                              placeholder="ФИО"
+                              onChange={(e) => setEditingStudent({...s, full_name: e.target.value})}
+                            />
+                            <Input 
+                              defaultValue={s.login} 
+                              placeholder="Логин"
+                              onChange={(e) => setEditingStudent({...editingStudent, login: e.target.value})}
+                            />
+                            <Input 
+                              defaultValue={s.password} 
+                              placeholder="Пароль"
+                              onChange={(e) => setEditingStudent({...editingStudent, password: e.target.value})}
+                            />
+                            <Select 
+                              defaultValue={s.class_id?.toString()} 
+                              onValueChange={(v) => setEditingStudent({...editingStudent, class_id: parseInt(v)})}
+                            >
+                              <SelectTrigger><SelectValue placeholder="Класс" /></SelectTrigger>
+                              <SelectContent>
+                                {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Button onClick={() => updateUser('student', editingStudent || {...s, user_id: s.user_id})} className="w-full">
+                              Сохранить
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      <Button size="sm" variant="destructive" onClick={() => deleteEntity('student', s.id)}>
+                        <Icon name="Trash2" size={14} />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -802,6 +976,54 @@ function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, se
         </Card>
       </TabsContent>
     </Tabs>
+  );
+}
+
+function ClassStatsCard({ classData, loadClassStats }: any) {
+  const [stats, setStats] = useState<any>(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && !stats) {
+      loadStats();
+    }
+  }, [isOpen]);
+
+  const loadStats = async () => {
+    const data = await loadClassStats(classData.id);
+    setStats(data);
+  };
+
+  return (
+    <div 
+      className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition"
+      onClick={() => setIsOpen(!isOpen)}
+    >
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="font-semibold text-lg">{classData.name}</h3>
+          <p className="text-sm text-gray-500">{classData.year} год</p>
+        </div>
+        <Icon name={isOpen ? "ChevronUp" : "ChevronDown"} size={20} />
+      </div>
+      
+      {isOpen && stats && (
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          <div className="p-3 bg-blue-50 rounded-lg text-center">
+            <div className="text-2xl font-bold text-blue-600">{stats.student_count}</div>
+            <div className="text-xs text-gray-600">Учеников</div>
+          </div>
+          <div className="p-3 bg-green-50 rounded-lg text-center">
+            <div className="text-2xl font-bold text-green-600">{stats.total_grades}</div>
+            <div className="text-xs text-gray-600">Оценок</div>
+          </div>
+          <div className="p-3 bg-orange-50 rounded-lg text-center">
+            <div className="text-2xl font-bold text-orange-600">{stats.avg_grade.toFixed(2)}</div>
+            <div className="text-xs text-gray-600">Средний балл</div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
