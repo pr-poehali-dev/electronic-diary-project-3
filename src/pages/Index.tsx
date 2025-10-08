@@ -59,12 +59,26 @@ export default function Index() {
   const handleLogin = async () => {
     try {
       console.log('Попытка входа:', { login, password, url: API_AUTH });
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
       const response = await fetch(API_AUTH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login, password })
+        body: JSON.stringify({ login, password }),
+        signal: controller.signal,
+        mode: 'cors',
+        cache: 'no-cache'
       });
+      
+      clearTimeout(timeoutId);
       console.log('Ответ получен:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
       const data = await response.json();
       console.log('Данные:', data);
       
@@ -77,9 +91,15 @@ export default function Index() {
       } else {
         toast.error('Неверный логин или пароль');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка входа:', error);
-      toast.error('Ошибка входа');
+      if (error.name === 'AbortError') {
+        toast.error('Превышено время ожидания');
+      } else if (error.message.includes('Failed to fetch')) {
+        toast.error('Не удалось подключиться к серверу. Проверьте интернет-соединение');
+      } else {
+        toast.error('Ошибка входа: ' + error.message);
+      }
     }
   };
 
