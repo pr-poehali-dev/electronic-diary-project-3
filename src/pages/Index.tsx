@@ -618,7 +618,7 @@ function AdminPanel({ classes, subjects, teachers, students, createEntity, delet
                           <DialogHeader>
                             <DialogTitle>Назначить предметы</DialogTitle>
                           </DialogHeader>
-                          <Select value={selectedSubject?.toString()} onValueChange={(v) => setSelectedSubject(parseInt(v))}>
+                          <Select value={selectedSubject?.toString() || ''} onValueChange={(v) => setSelectedSubject(parseInt(v))}>
                             <SelectTrigger>
                               <SelectValue placeholder="Выберите предмет" />
                             </SelectTrigger>
@@ -872,7 +872,7 @@ function AdminPanel({ classes, subjects, teachers, students, createEntity, delet
               <CardDescription>Выберите класс для просмотра и редактирования</CardDescription>
             </CardHeader>
             <CardContent>
-              <Select value={selectedClass?.toString()} onValueChange={(v) => setSelectedClass(parseInt(v))}>
+              <Select value={selectedClass?.toString() || ''} onValueChange={(v) => setSelectedClass(parseInt(v))}>
                 <SelectTrigger className="mb-4"><SelectValue placeholder="Выберите класс" /></SelectTrigger>
                 <SelectContent>
                   {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
@@ -909,12 +909,22 @@ function ScheduleGrid({ classId, schedule, deleteEntity, loadData }: any) {
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem('authToken');
-      const [subjectsRes, teachersRes] = await Promise.all([
-        fetch(`${API_ADMIN}?entity=subjects`, { headers: { 'X-Auth-Token': token || '' } }),
-        fetch(`${API_ADMIN}?entity=teachers`, { headers: { 'X-Auth-Token': token || '' } })
-      ]);
-      if (subjectsRes.ok) setSubjects(await subjectsRes.json());
-      if (teachersRes.ok) setTeachers(await teachersRes.json());
+      try {
+        const [subjectsRes, teachersRes] = await Promise.all([
+          fetch(`${API_ADMIN}?entity=subjects`, { headers: { 'X-Auth-Token': token || '' } }),
+          fetch(`${API_ADMIN}?entity=teachers`, { headers: { 'X-Auth-Token': token || '' } })
+        ]);
+        if (subjectsRes.ok) {
+          const subjectsData = await subjectsRes.json();
+          setSubjects(subjectsData.data || subjectsData);
+        }
+        if (teachersRes.ok) {
+          const teachersData = await teachersRes.json();
+          setTeachers(teachersData.data || teachersData);
+        }
+      } catch (err) {
+        console.error('Error loading data:', err);
+      }
     };
     fetchData();
   }, []);
@@ -1111,13 +1121,13 @@ function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, se
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Select value={selectedClass?.toString()} onValueChange={(v) => setSelectedClass(parseInt(v))}>
+              <Select value={selectedClass?.toString() || ''} onValueChange={(v) => setSelectedClass(parseInt(v))}>
                 <SelectTrigger><SelectValue placeholder="Выберите класс" /></SelectTrigger>
                 <SelectContent>
                   {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={selectedSubject?.toString()} onValueChange={(v) => setSelectedSubject(parseInt(v))}>
+              <Select value={selectedSubject?.toString() || ''} onValueChange={(v) => setSelectedSubject(parseInt(v))}>
                 <SelectTrigger><SelectValue placeholder="Выберите предмет" /></SelectTrigger>
                 <SelectContent>
                   {teacherSubjects.map((s: any) => <SelectItem key={s.subject_id} value={s.subject_id.toString()}>{s.subject_name}</SelectItem>)}
@@ -1337,7 +1347,7 @@ function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, se
             <CardDescription>Просмотр расписания по классам</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Select value={selectedClass?.toString()} onValueChange={(v) => { setSelectedClass(parseInt(v)); loadSchedule(); }}>
+            <Select value={selectedClass?.toString() || ''} onValueChange={(v) => { setSelectedClass(parseInt(v)); loadSchedule(); }}>
               <SelectTrigger><SelectValue placeholder="Выберите класс для просмотра" /></SelectTrigger>
               <SelectContent>
                 {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
@@ -1483,7 +1493,7 @@ function StudentPanel({ user, subjects, schedule, homework, gradesData, selected
             <CardTitle>Мои оценки</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Select value={selectedSubject?.toString()} onValueChange={(v) => setSelectedSubject(parseInt(v))}>
+            <Select value={selectedSubject?.toString() || ''} onValueChange={(v) => setSelectedSubject(parseInt(v))}>
               <SelectTrigger><SelectValue placeholder="Выберите предмет" /></SelectTrigger>
               <SelectContent>
                 {subjects.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}

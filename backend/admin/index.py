@@ -189,6 +189,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             entity_id = params.get('id')
             
             if entity == 'class':
+                cur.execute("DELETE FROM schedule WHERE class_id = %s", (entity_id,))
+                cur.execute("DELETE FROM homework WHERE class_id = %s", (entity_id,))
+                cur.execute("DELETE FROM grades WHERE student_id IN (SELECT id FROM students WHERE class_id = %s)", (entity_id,))
+                cur.execute("DELETE FROM students WHERE class_id = %s", (entity_id,))
                 cur.execute("DELETE FROM classes WHERE id = %s", (entity_id,))
             elif entity == 'subject':
                 cur.execute("DELETE FROM subjects WHERE id = %s", (entity_id,))
