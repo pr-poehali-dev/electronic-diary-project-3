@@ -307,6 +307,7 @@ export default function Index() {
           createEntity={createEntity}
           deleteEntity={deleteEntity}
           loadData={loadData}
+          schedule={schedule}
         />}
         
         {user?.role === 'teacher' && <TeacherPanel 
@@ -393,7 +394,7 @@ export default function Index() {
   );
 }
 
-function AdminPanel({ classes, subjects, teachers, students, createEntity, deleteEntity, loadData }: any) {
+function AdminPanel({ classes, subjects, teachers, students, createEntity, deleteEntity, loadData, schedule }: any) {
   const [newClass, setNewClass] = useState({ name: '', year: 2025 });
   const [newSubject, setNewSubject] = useState('');
   const [newTeacher, setNewTeacher] = useState({ login: '', password: '', full_name: '' });
@@ -401,6 +402,7 @@ function AdminPanel({ classes, subjects, teachers, students, createEntity, delet
   const [scheduleForm, setScheduleForm] = useState({ class_id: '', subject_id: '', teacher_id: '', day_of_week: 1, lesson_number: 1 });
   const [selectedTeacher, setSelectedTeacher] = useState<number | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
+  const [selectedClass, setSelectedClass] = useState<number | null>(null);
   const [editingTeacher, setEditingTeacher] = useState<any>(null);
   const [editingStudent, setEditingStudent] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
