@@ -49,7 +49,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         conn = psycopg2.connect(dsn)
         cur = conn.cursor()
         
-        cur.execute("SELECT id, login, role, full_name, avatar_color, avatar_emoji FROM users WHERE login = %s AND password = %s", (login, password))
+        login_escaped = login.replace("'", "''")
+        password_escaped = password.replace("'", "''")
+        
+        cur.execute(f"SELECT id, login, role, full_name, avatar_color, avatar_emoji FROM users WHERE login = '{login_escaped}' AND password = '{password_escaped}'")
         user = cur.fetchone()
         
         if user:
@@ -57,11 +60,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             role = user[2]
             
             if role == 'teacher':
-                cur.execute("SELECT id FROM teachers WHERE user_id = %s", (user_id,))
+                cur.execute(f"SELECT id FROM teachers WHERE user_id = {user_id}")
                 teacher_row = cur.fetchone()
                 teacher_id = teacher_row[0] if teacher_row else None
             elif role == 'student':
-                cur.execute("SELECT id, class_id FROM students WHERE user_id = %s", (user_id,))
+                cur.execute(f"SELECT id, class_id FROM students WHERE user_id = {user_id}")
                 student_row = cur.fetchone()
                 student_id = student_row[0] if student_row else None
                 class_id = student_row[1] if student_row else None
