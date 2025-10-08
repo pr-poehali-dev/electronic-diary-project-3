@@ -49,18 +49,40 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         conn = psycopg2.connect(dsn)
         cur = conn.cursor()
         
-        cur.execute("SELECT id, login, role, full_name FROM users WHERE login = %s AND password = %s", (login, password))
+        cur.execute("SELECT id, login, role, full_name, avatar_color, avatar_emoji FROM users WHERE login = %s AND password = %s", (login, password))
         user = cur.fetchone()
         
-        cur.close()
-        conn.close()
-        
         if user:
+            user_id = user[0]
+            role = user[2]
+            
+            if role == 'teacher':
+                cur.execute("SELECT id FROM teachers WHERE user_id = %s", (user_id,))
+                teacher_row = cur.fetchone()
+                teacher_id = teacher_row[0] if teacher_row else None
+            elif role == 'student':
+                cur.execute("SELECT id, class_id FROM students WHERE user_id = %s", (user_id,))
+                student_row = cur.fetchone()
+                student_id = student_row[0] if student_row else None
+                class_id = student_row[1] if student_row else None
+            else:
+                teacher_id = None
+                student_id = None
+                class_id = None
+            
+            cur.close()
+            conn.close()
+            
             user_data = {
                 'id': user[0],
                 'login': user[1],
                 'role': user[2],
-                'full_name': user[3]
+                'full_name': user[3],
+                'avatar_color': user[4],
+                'avatar_emoji': user[5],
+                'teacher_id': teacher_id if role == 'teacher' else None,
+                'student_id': student_id if role == 'student' else None,
+                'class_id': class_id if role == 'student' else None
             }
             
             return {
@@ -70,6 +92,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'body': json.dumps({'success': True, 'user': user_data})
             }
         else:
+            cur.close()
+            conn.close()
             return {
                 'statusCode': 401,
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},

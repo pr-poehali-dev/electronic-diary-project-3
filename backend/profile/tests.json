@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "Update profile",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "user_id": 1,
+        "avatar_color": "#FF5733",
+        "avatar_emoji": "🎓"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

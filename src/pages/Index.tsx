@@ -1,61 +1,37 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 
 const API_AUTH = 'https://functions.poehali.dev/1fa274be-9623-4944-98ad-cbb58e600c51';
 const API_ADMIN = 'https://functions.poehali.dev/a9a76387-8a57-449e-8024-e988072be345';
 const API_GRADES = 'https://functions.poehali.dev/1de964af-0e0e-4343-b359-f7ca46b4b3b6';
+const API_HOMEWORK = 'https://functions.poehali.dev/faf9939d-e0eb-4ff2-9aa2-65118e9ecbea';
+const API_PROFILE = 'https://functions.poehali.dev/6396f4b3-2a6f-4f99-932c-f49db097cc22';
+
+const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+const EMOJIS = ['👤', '🎓', '📚', '✏️', '🌟', '🚀', '💼', '👨‍🏫', '👩‍🏫', '🧑‍🎓'];
+const COLORS = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
 interface User {
   id: number;
   login: string;
   role: string;
   full_name: string;
-}
-
-interface Class {
-  id: number;
-  name: string;
-  year: number;
-}
-
-interface Subject {
-  id: number;
-  name: string;
-}
-
-interface Teacher {
-  id: number;
-  full_name: string;
-  login: string;
-}
-
-interface Student {
-  id: number;
-  full_name: string;
-  login: string;
-  class_name: string;
-  class_id: number;
-}
-
-interface Grade {
-  grade: number;
-  date: string;
-  comment: string;
-}
-
-interface StudentGrades {
-  student_id: number;
-  student_name: string;
-  grades: Grade[];
-  average: number;
+  avatar_color?: string;
+  avatar_emoji?: string;
+  teacher_id?: number;
+  student_id?: number;
+  class_id?: number;
 }
 
 export default function Index() {
@@ -63,26 +39,21 @@ export default function Index() {
   const [user, setUser] = useState<User | null>(null);
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
+  const [showProfile, setShowProfile] = useState(false);
+  const [selectedEmoji, setSelectedEmoji] = useState('👤');
+  const [selectedColor, setSelectedColor] = useState('#2563EB');
 
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [gradesData, setGradesData] = useState<StudentGrades[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [gradesData, setGradesData] = useState<any[]>([]);
+  const [schedule, setSchedule] = useState<any[]>([]);
+  const [homework, setHomework] = useState<any[]>([]);
+  const [teacherSubjects, setTeacherSubjects] = useState<any[]>([]);
 
   const [selectedClass, setSelectedClass] = useState<number | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
-
-  const [newClassName, setNewClassName] = useState('');
-  const [newClassYear, setNewClassYear] = useState('2025');
-  const [newSubjectName, setNewSubjectName] = useState('');
-  const [newTeacherName, setNewTeacherName] = useState('');
-  const [newTeacherLogin, setNewTeacherLogin] = useState('');
-  const [newTeacherPassword, setNewTeacherPassword] = useState('');
-  const [newStudentName, setNewStudentName] = useState('');
-  const [newStudentLogin, setNewStudentLogin] = useState('');
-  const [newStudentPassword, setNewStudentPassword] = useState('');
-  const [newStudentClass, setNewStudentClass] = useState('');
 
   const handleLogin = async () => {
     try {
@@ -96,6 +67,8 @@ export default function Index() {
       if (data.success) {
         setUser(data.user);
         setIsLoggedIn(true);
+        setSelectedEmoji(data.user.avatar_emoji || '👤');
+        setSelectedColor(data.user.avatar_color || '#2563EB');
         toast.success('Вход выполнен');
       } else {
         toast.error('Неверный логин или пароль');
@@ -105,28 +78,65 @@ export default function Index() {
     }
   };
 
-  const loadClasses = async () => {
-    const response = await fetch(`${API_ADMIN}?entity=classes`);
-    const data = await response.json();
-    setClasses(data.data || []);
+  const updateProfile = async () => {
+    try {
+      await fetch(API_PROFILE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user?.id,
+          avatar_color: selectedColor,
+          avatar_emoji: selectedEmoji
+        })
+      });
+      
+      if (user) {
+        setUser({ ...user, avatar_color: selectedColor, avatar_emoji: selectedEmoji });
+      }
+      
+      toast.success('Профиль обновлен');
+      setShowProfile(false);
+    } catch (error) {
+      toast.error('Ошибка обновления профиля');
+    }
   };
 
-  const loadSubjects = async () => {
-    const response = await fetch(`${API_ADMIN}?entity=subjects`);
-    const data = await response.json();
-    setSubjects(data.data || []);
-  };
-
-  const loadTeachers = async () => {
-    const response = await fetch(`${API_ADMIN}?entity=teachers`);
-    const data = await response.json();
-    setTeachers(data.data || []);
-  };
-
-  const loadStudents = async () => {
-    const response = await fetch(`${API_ADMIN}?entity=students`);
-    const data = await response.json();
-    setStudents(data.data || []);
+  const loadData = async () => {
+    if (!isLoggedIn) return;
+    
+    const classesRes = await fetch(`${API_ADMIN}?entity=classes`);
+    const classesData = await classesRes.json();
+    setClasses(classesData.data || []);
+    
+    const subjectsRes = await fetch(`${API_ADMIN}?entity=subjects`);
+    const subjectsData = await subjectsRes.json();
+    setSubjects(subjectsData.data || []);
+    
+    if (user?.role === 'admin') {
+      const teachersRes = await fetch(`${API_ADMIN}?entity=teachers`);
+      const teachersData = await teachersRes.json();
+      setTeachers(teachersData.data || []);
+      
+      const studentsRes = await fetch(`${API_ADMIN}?entity=students`);
+      const studentsData = await studentsRes.json();
+      setStudents(studentsData.data || []);
+    }
+    
+    if (user?.role === 'teacher' && user.teacher_id) {
+      const tsRes = await fetch(`${API_ADMIN}?entity=teacher_subjects&teacher_id=${user.teacher_id}`);
+      const tsData = await tsRes.json();
+      setTeacherSubjects(tsData.data || []);
+    }
+    
+    if (user?.role === 'student' && user.class_id) {
+      const scheduleRes = await fetch(`${API_ADMIN}?entity=schedule&class_id=${user.class_id}`);
+      const scheduleData = await scheduleRes.json();
+      setSchedule(scheduleData.data || []);
+      
+      const homeworkRes = await fetch(`${API_ADMIN}?entity=homework&class_id=${user.class_id}`);
+      const homeworkData = await homeworkRes.json();
+      setHomework(homeworkData.data || []);
+    }
   };
 
   const loadGrades = async () => {
@@ -137,94 +147,31 @@ export default function Index() {
     setGradesData(data.data || []);
   };
 
+  const loadSchedule = async () => {
+    if (!selectedClass) return;
+    
+    const response = await fetch(`${API_ADMIN}?entity=schedule&class_id=${selectedClass}`);
+    const data = await response.json();
+    setSchedule(data.data || []);
+  };
+
+  const loadHomework = async () => {
+    if (!selectedClass) return;
+    
+    const response = await fetch(`${API_ADMIN}?entity=homework&class_id=${selectedClass}`);
+    const data = await response.json();
+    setHomework(data.data || []);
+  };
+
   useEffect(() => {
-    if (isLoggedIn) {
-      loadClasses();
-      loadSubjects();
-      loadTeachers();
-      loadStudents();
-    }
-  }, [isLoggedIn]);
+    loadData();
+  }, [isLoggedIn, user]);
 
   useEffect(() => {
     if (selectedClass && selectedSubject) {
       loadGrades();
     }
   }, [selectedClass, selectedSubject]);
-
-  const createClass = async () => {
-    try {
-      await fetch(`${API_ADMIN}?entity=class`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newClassName, year: parseInt(newClassYear) })
-      });
-      toast.success('Класс создан');
-      setNewClassName('');
-      loadClasses();
-    } catch (error) {
-      toast.error('Ошибка создания класса');
-    }
-  };
-
-  const createSubject = async () => {
-    try {
-      await fetch(`${API_ADMIN}?entity=subject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newSubjectName })
-      });
-      toast.success('Предмет создан');
-      setNewSubjectName('');
-      loadSubjects();
-    } catch (error) {
-      toast.error('Ошибка создания предмета');
-    }
-  };
-
-  const createTeacher = async () => {
-    try {
-      await fetch(`${API_ADMIN}?entity=teacher`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          login: newTeacherLogin, 
-          password: newTeacherPassword, 
-          full_name: newTeacherName 
-        })
-      });
-      toast.success('Учитель создан');
-      setNewTeacherName('');
-      setNewTeacherLogin('');
-      setNewTeacherPassword('');
-      loadTeachers();
-    } catch (error) {
-      toast.error('Ошибка создания учителя');
-    }
-  };
-
-  const createStudent = async () => {
-    try {
-      await fetch(`${API_ADMIN}?entity=student`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          login: newStudentLogin, 
-          password: newStudentPassword, 
-          full_name: newStudentName,
-          class_id: parseInt(newStudentClass) || null
-        })
-      });
-      toast.success('Ученик создан');
-      setNewStudentName('');
-      setNewStudentLogin('');
-      setNewStudentPassword('');
-      setNewStudentClass('');
-      loadStudents();
-    } catch (error) {
-      toast.error('Ошибка создания ученика');
-    }
-  };
 
   const addGrade = async (studentId: number, grade: number) => {
     try {
@@ -234,7 +181,7 @@ export default function Index() {
         body: JSON.stringify({
           student_id: studentId,
           subject_id: selectedSubject,
-          teacher_id: null,
+          teacher_id: user?.teacher_id,
           grade: grade,
           grade_date: new Date().toISOString().split('T')[0],
           comment: ''
@@ -247,32 +194,65 @@ export default function Index() {
     }
   };
 
+  const createEntity = async (entity: string, data: any) => {
+    try {
+      await fetch(`${API_ADMIN}?entity=${entity}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      toast.success('Создано');
+      loadData();
+    } catch (error) {
+      toast.error('Ошибка создания');
+    }
+  };
+
+  const deleteEntity = async (entity: string, id: number) => {
+    try {
+      await fetch(`${API_ADMIN}?entity=${entity}&id=${id}`, {
+        method: 'DELETE'
+      });
+      toast.success('Удалено');
+      loadData();
+    } catch (error) {
+      toast.error('Ошибка удаления');
+    }
+  };
+
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center">Электронный дневник</CardTitle>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-2xl">
+          <CardHeader className="space-y-2 text-center">
+            <div className="mx-auto w-20 h-20 bg-primary rounded-full flex items-center justify-center text-4xl mb-2">
+              📚
+            </div>
+            <CardTitle className="text-3xl">Электронный дневник</CardTitle>
+            <CardDescription>Войдите в систему</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
+            <div className="space-y-2">
               <Label>Логин</Label>
               <Input 
                 value={login} 
                 onChange={(e) => setLogin(e.target.value)}
                 placeholder="Введите логин"
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Пароль</Label>
               <Input 
                 type="password"
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Введите пароль"
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
               />
             </div>
-            <Button onClick={handleLogin} className="w-full">
+            <Button onClick={handleLogin} className="w-full" size="lg">
+              <Icon name="LogIn" className="mr-2" size={18} />
               Войти
             </Button>
           </CardContent>
@@ -283,266 +263,681 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
+      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Электронный дневник</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">{user?.full_name}</span>
-            <Button variant="outline" onClick={() => setIsLoggedIn(false)}>
-              Выход
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">📚</div>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">Электронный дневник</h1>
+              <p className="text-sm text-gray-500">
+                {user?.role === 'admin' && 'Администратор'}
+                {user?.role === 'teacher' && 'Учитель'}
+                {user?.role === 'student' && 'Ученик'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowProfile(true)}
+              className="flex items-center gap-2"
+            >
+              <div 
+                className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
+                style={{ backgroundColor: user?.avatar_color || '#2563EB', color: 'white' }}
+              >
+                {user?.avatar_emoji || '👤'}
+              </div>
+              <span className="font-medium">{user?.full_name}</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setIsLoggedIn(false)}>
+              <Icon name="LogOut" size={16} />
             </Button>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="journal" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="journal">
-              <Icon name="BookOpen" size={18} className="mr-2" />
-              Журнал оценок
-            </TabsTrigger>
-            <TabsTrigger value="admin">
-              <Icon name="Settings" size={18} className="mr-2" />
-              Администрирование
-            </TabsTrigger>
-          </TabsList>
+        {user?.role === 'admin' && <AdminPanel 
+          classes={classes}
+          subjects={subjects}
+          teachers={teachers}
+          students={students}
+          createEntity={createEntity}
+          deleteEntity={deleteEntity}
+          loadData={loadData}
+        />}
+        
+        {user?.role === 'teacher' && <TeacherPanel 
+          user={user}
+          classes={classes}
+          subjects={subjects}
+          teacherSubjects={teacherSubjects}
+          gradesData={gradesData}
+          selectedClass={selectedClass}
+          setSelectedClass={setSelectedClass}
+          selectedSubject={selectedSubject}
+          setSelectedSubject={setSelectedSubject}
+          addGrade={addGrade}
+          schedule={schedule}
+          homework={homework}
+          loadSchedule={loadSchedule}
+          loadHomework={loadHomework}
+          createEntity={createEntity}
+        />}
+        
+        {user?.role === 'student' && <StudentPanel 
+          user={user}
+          subjects={subjects}
+          schedule={schedule}
+          homework={homework}
+          gradesData={gradesData}
+          selectedSubject={selectedSubject}
+          setSelectedSubject={setSelectedSubject}
+        />}
+      </main>
 
-          <TabsContent value="journal" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Журнал оценок</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Класс</Label>
-                    <Select value={selectedClass?.toString()} onValueChange={(v) => setSelectedClass(parseInt(v))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите класс" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classes.map(c => (
-                          <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+      <Dialog open={showProfile} onOpenChange={setShowProfile}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Настройки профиля</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Выберите эмодзи</Label>
+              <div className="flex gap-2 flex-wrap mt-2">
+                {EMOJIS.map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => setSelectedEmoji(emoji)}
+                    className={`w-12 h-12 rounded-lg border-2 text-2xl transition ${
+                      selectedEmoji === emoji ? 'border-primary bg-primary/10' : 'border-gray-200 hover:border-primary/50'
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Выберите цвет</Label>
+              <div className="flex gap-2 flex-wrap mt-2">
+                {COLORS.map(color => (
+                  <button
+                    key={color}
+                    onClick={() => setSelectedColor(color)}
+                    className={`w-12 h-12 rounded-lg border-2 transition ${
+                      selectedColor === color ? 'border-gray-900 scale-110' : 'border-gray-200'
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="pt-4">
+              <div 
+                className="w-20 h-20 mx-auto rounded-full flex items-center justify-center text-4xl"
+                style={{ backgroundColor: selectedColor, color: 'white' }}
+              >
+                {selectedEmoji}
+              </div>
+            </div>
+            <Button onClick={updateProfile} className="w-full">
+              Сохранить
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function AdminPanel({ classes, subjects, teachers, students, createEntity, deleteEntity, loadData }: any) {
+  const [newClass, setNewClass] = useState({ name: '', year: 2025 });
+  const [newSubject, setNewSubject] = useState('');
+  const [newTeacher, setNewTeacher] = useState({ login: '', password: '', full_name: '' });
+  const [newStudent, setNewStudent] = useState({ login: '', password: '', full_name: '', class_id: '' });
+  const [scheduleForm, setScheduleForm] = useState({ class_id: '', subject_id: '', teacher_id: '', day_of_week: 1, lesson_number: 1 });
+  const [selectedTeacher, setSelectedTeacher] = useState<number | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
+
+  return (
+    <Tabs defaultValue="users" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-4">
+        <TabsTrigger value="users">
+          <Icon name="Users" size={16} className="mr-2" />
+          Пользователи
+        </TabsTrigger>
+        <TabsTrigger value="classes">
+          <Icon name="School" size={16} className="mr-2" />
+          Классы
+        </TabsTrigger>
+        <TabsTrigger value="subjects">
+          <Icon name="BookOpen" size={16} className="mr-2" />
+          Предметы
+        </TabsTrigger>
+        <TabsTrigger value="schedule">
+          <Icon name="Calendar" size={16} className="mr-2" />
+          Расписание
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="users" className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Учителя</CardTitle>
+              <CardDescription>Создание и управление учителями</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Input placeholder="ФИО" value={newTeacher.full_name} onChange={(e) => setNewTeacher({...newTeacher, full_name: e.target.value})} />
+                <Input placeholder="Логин" value={newTeacher.login} onChange={(e) => setNewTeacher({...newTeacher, login: e.target.value})} />
+                <Input placeholder="Пароль" type="password" value={newTeacher.password} onChange={(e) => setNewTeacher({...newTeacher, password: e.target.value})} />
+                <Button onClick={() => {
+                  createEntity('teacher', newTeacher);
+                  setNewTeacher({ login: '', password: '', full_name: '' });
+                }} className="w-full">
+                  <Icon name="Plus" size={16} className="mr-2" />
+                  Создать учителя
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {teachers.map((t: any) => (
+                  <div key={t.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-start">
+                    <div>
+                      <div className="font-medium">{t.full_name}</div>
+                      <div className="text-sm text-gray-500">Логин: {t.login}</div>
+                      <div className="text-sm text-gray-500">Пароль: {t.password}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" onClick={() => setSelectedTeacher(t.id)}>
+                            <Icon name="Plus" size={14} />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Назначить предметы</DialogTitle>
+                          </DialogHeader>
+                          <Select value={selectedSubject?.toString()} onValueChange={(v) => setSelectedSubject(parseInt(v))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Выберите предмет" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {subjects.map((s: any) => (
+                                <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button onClick={() => {
+                            createEntity('teacher_subject', { teacher_id: selectedTeacher, subject_id: selectedSubject });
+                          }}>
+                            Назначить
+                          </Button>
+                        </DialogContent>
+                      </Dialog>
+                      <Button size="sm" variant="destructive" onClick={() => deleteEntity('teacher', t.id)}>
+                        <Icon name="Trash2" size={14} />
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <Label>Предмет</Label>
-                    <Select value={selectedSubject?.toString()} onValueChange={(v) => setSelectedSubject(parseInt(v))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите предмет" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subjects.map(s => (
-                          <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Ученики</CardTitle>
+              <CardDescription>Создание и управление учениками</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Input placeholder="ФИО" value={newStudent.full_name} onChange={(e) => setNewStudent({...newStudent, full_name: e.target.value})} />
+                <Input placeholder="Логин" value={newStudent.login} onChange={(e) => setNewStudent({...newStudent, login: e.target.value})} />
+                <Input placeholder="Пароль" type="password" value={newStudent.password} onChange={(e) => setNewStudent({...newStudent, password: e.target.value})} />
+                <Select value={newStudent.class_id} onValueChange={(v) => setNewStudent({...newStudent, class_id: v})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите класс" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={() => {
+                  createEntity('student', { ...newStudent, class_id: parseInt(newStudent.class_id) || null });
+                  setNewStudent({ login: '', password: '', full_name: '', class_id: '' });
+                }} className="w-full">
+                  <Icon name="Plus" size={16} className="mr-2" />
+                  Создать ученика
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {students.map((s: any) => (
+                  <div key={s.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-start">
+                    <div>
+                      <div className="font-medium">{s.full_name}</div>
+                      <div className="text-sm text-gray-500">Логин: {s.login}</div>
+                      <div className="text-sm text-gray-500">Пароль: {s.password}</div>
+                      {s.class_name && <Badge variant="secondary" className="mt-1">{s.class_name}</Badge>}
+                    </div>
+                    <Button size="sm" variant="destructive" onClick={() => deleteEntity('student', s.id)}>
+                      <Icon name="Trash2" size={14} />
+                    </Button>
                   </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="classes">
+        <Card>
+          <CardHeader>
+            <CardTitle>Классы</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input placeholder="Название класса" value={newClass.name} onChange={(e) => setNewClass({...newClass, name: e.target.value})} />
+              <Input placeholder="Год" type="number" value={newClass.year} onChange={(e) => setNewClass({...newClass, year: parseInt(e.target.value)})} className="w-32" />
+              <Button onClick={() => {
+                createEntity('class', newClass);
+                setNewClass({ name: '', year: 2025 });
+              }}>
+                Создать
+              </Button>
+            </div>
+            <div className="grid gap-2 md:grid-cols-3">
+              {classes.map((c: any) => (
+                <div key={c.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                  <div>
+                    <div className="font-medium">{c.name}</div>
+                    <div className="text-sm text-gray-500">{c.year} год</div>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => deleteEntity('class', c.id)}>
+                    <Icon name="Trash2" size={14} />
+                  </Button>
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-                {selectedClass && selectedSubject && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="bg-primary text-primary-foreground">Ученик</TableHead>
-                          <TableHead className="bg-primary text-primary-foreground">Оценки</TableHead>
-                          <TableHead className="bg-primary text-primary-foreground">Средний балл</TableHead>
-                          <TableHead className="bg-primary text-primary-foreground">Действия</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {gradesData.map((student) => (
-                          <TableRow key={student.student_id}>
-                            <TableCell className="font-medium">{student.student_name}</TableCell>
-                            <TableCell>
-                              <div className="flex gap-1 flex-wrap">
-                                {student.grades.map((g, idx) => (
-                                  <span 
-                                    key={idx}
-                                    className={`inline-flex items-center justify-center w-8 h-8 rounded text-sm font-semibold ${
-                                      g.grade === 5 ? 'bg-green-100 text-green-800' :
-                                      g.grade === 4 ? 'bg-blue-100 text-blue-800' :
-                                      g.grade === 3 ? 'bg-yellow-100 text-yellow-800' :
-                                      'bg-red-100 text-red-800'
-                                    }`}
-                                  >
-                                    {g.grade}
-                                  </span>
-                                ))}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <span className="font-semibold text-lg">{student.average.toFixed(2)}</span>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1">
-                                {[5, 4, 3, 2].map(grade => (
-                                  <Button
-                                    key={grade}
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => addGrade(student.student_id, grade)}
-                                  >
-                                    {grade}
-                                  </Button>
-                                ))}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+      <TabsContent value="subjects">
+        <Card>
+          <CardHeader>
+            <CardTitle>Предметы</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input placeholder="Название предмета" value={newSubject} onChange={(e) => setNewSubject(e.target.value)} />
+              <Button onClick={() => {
+                createEntity('subject', { name: newSubject });
+                setNewSubject('');
+              }}>
+                Создать
+              </Button>
+            </div>
+            <div className="grid gap-2 md:grid-cols-4">
+              {subjects.map((s: any) => (
+                <div key={s.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                  <span className="font-medium">{s.name}</span>
+                  <Button size="sm" variant="ghost" onClick={() => deleteEntity('subject', s.id)}>
+                    <Icon name="Trash2" size={14} />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="schedule">
+        <Card>
+          <CardHeader>
+            <CardTitle>Расписание</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-2 md:grid-cols-5">
+              <Select value={scheduleForm.class_id} onValueChange={(v) => setScheduleForm({...scheduleForm, class_id: v})}>
+                <SelectTrigger><SelectValue placeholder="Класс" /></SelectTrigger>
+                <SelectContent>
+                  {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={scheduleForm.subject_id} onValueChange={(v) => setScheduleForm({...scheduleForm, subject_id: v})}>
+                <SelectTrigger><SelectValue placeholder="Предмет" /></SelectTrigger>
+                <SelectContent>
+                  {subjects.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={scheduleForm.day_of_week.toString()} onValueChange={(v) => setScheduleForm({...scheduleForm, day_of_week: parseInt(v)})}>
+                <SelectTrigger><SelectValue placeholder="День" /></SelectTrigger>
+                <SelectContent>
+                  {DAYS.map((d, i) => <SelectItem key={i} value={(i+1).toString()}>{d}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Input type="number" placeholder="Урок №" value={scheduleForm.lesson_number} onChange={(e) => setScheduleForm({...scheduleForm, lesson_number: parseInt(e.target.value) || 1})} />
+              <Button onClick={() => {
+                createEntity('schedule', {
+                  class_id: parseInt(scheduleForm.class_id),
+                  subject_id: parseInt(scheduleForm.subject_id),
+                  teacher_id: null,
+                  day_of_week: scheduleForm.day_of_week,
+                  lesson_number: scheduleForm.lesson_number
+                });
+              }}>
+                Добавить
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, selectedClass, setSelectedClass, selectedSubject, setSelectedSubject, addGrade, schedule, homework, loadSchedule, loadHomework, createEntity }: any) {
+  const [homeworkForm, setHomeworkForm] = useState({ class_id: '', subject_id: '', description: '', due_date: '' });
+
+  return (
+    <Tabs defaultValue="grades" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="grades">
+          <Icon name="Award" size={16} className="mr-2" />
+          Журнал оценок
+        </TabsTrigger>
+        <TabsTrigger value="homework">
+          <Icon name="BookOpen" size={16} className="mr-2" />
+          Домашние задания
+        </TabsTrigger>
+        <TabsTrigger value="schedule">
+          <Icon name="Calendar" size={16} className="mr-2" />
+          Расписание
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="grades">
+        <Card>
+          <CardHeader>
+            <CardTitle>Журнал оценок</CardTitle>
+            <CardDescription>Выставление оценок ученикам</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Select value={selectedClass?.toString()} onValueChange={(v) => setSelectedClass(parseInt(v))}>
+                <SelectTrigger><SelectValue placeholder="Выберите класс" /></SelectTrigger>
+                <SelectContent>
+                  {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={selectedSubject?.toString()} onValueChange={(v) => setSelectedSubject(parseInt(v))}>
+                <SelectTrigger><SelectValue placeholder="Выберите предмет" /></SelectTrigger>
+                <SelectContent>
+                  {teacherSubjects.map((s: any) => <SelectItem key={s.subject_id} value={s.subject_id.toString()}>{s.subject_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedClass && selectedSubject && (
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-primary">
+                      <TableHead className="text-primary-foreground">Ученик</TableHead>
+                      <TableHead className="text-primary-foreground">Оценки</TableHead>
+                      <TableHead className="text-primary-foreground">Средний балл</TableHead>
+                      <TableHead className="text-primary-foreground">Действия</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {gradesData.map((student: any) => (
+                      <TableRow key={student.student_id}>
+                        <TableCell className="font-medium">{student.student_name}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 flex-wrap">
+                            {student.grades.map((g: any, idx: number) => (
+                              <span 
+                                key={idx}
+                                className={`inline-flex items-center justify-center w-8 h-8 rounded text-sm font-semibold ${
+                                  g.grade === 5 ? 'bg-green-100 text-green-800' :
+                                  g.grade === 4 ? 'bg-blue-100 text-blue-800' :
+                                  g.grade === 3 ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-red-100 text-red-800'
+                                }`}
+                              >
+                                {g.grade}
+                              </span>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-lg font-bold">{student.average ? student.average.toFixed(2) : '-'}</span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {[5, 4, 3, 2].map(grade => (
+                              <Button key={grade} size="sm" variant="outline" onClick={() => addGrade(student.student_id, grade)}>
+                                {grade}
+                              </Button>
+                            ))}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="homework">
+        <Card>
+          <CardHeader>
+            <CardTitle>Домашние задания</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-2">
+              <Select value={homeworkForm.class_id} onValueChange={(v) => setHomeworkForm({...homeworkForm, class_id: v})}>
+                <SelectTrigger><SelectValue placeholder="Класс" /></SelectTrigger>
+                <SelectContent>
+                  {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={homeworkForm.subject_id} onValueChange={(v) => setHomeworkForm({...homeworkForm, subject_id: v})}>
+                <SelectTrigger><SelectValue placeholder="Предмет" /></SelectTrigger>
+                <SelectContent>
+                  {teacherSubjects.map((s: any) => <SelectItem key={s.subject_id} value={s.subject_id.toString()}>{s.subject_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Textarea placeholder="Описание задания" value={homeworkForm.description} onChange={(e) => setHomeworkForm({...homeworkForm, description: e.target.value})} />
+              <Input type="date" value={homeworkForm.due_date} onChange={(e) => setHomeworkForm({...homeworkForm, due_date: e.target.value})} />
+              <Button onClick={() => {
+                createEntity('homework', {
+                  class_id: parseInt(homeworkForm.class_id),
+                  subject_id: parseInt(homeworkForm.subject_id),
+                  teacher_id: user.teacher_id,
+                  description: homeworkForm.description,
+                  due_date: homeworkForm.due_date
+                });
+                setHomeworkForm({ class_id: '', subject_id: '', description: '', due_date: '' });
+              }}>
+                Создать задание
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="schedule">
+        <Card>
+          <CardHeader>
+            <CardTitle>Расписание</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedClass?.toString()} onValueChange={(v) => { setSelectedClass(parseInt(v)); loadSchedule(); }}>
+              <SelectTrigger><SelectValue placeholder="Выберите класс" /></SelectTrigger>
+              <SelectContent>
+                {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="mt-4 space-y-2">
+              {schedule.map((item: any) => (
+                <div key={item.id} className="p-3 bg-gray-50 rounded-lg">
+                  <div className="font-medium">{DAYS[item.day_of_week - 1]} - Урок {item.lesson_number}</div>
+                  <div className="text-sm text-gray-600">{item.subject_name}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function StudentPanel({ user, subjects, schedule, homework, gradesData, selectedSubject, setSelectedSubject }: any) {
+  const [myGrades, setMyGrades] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (selectedSubject && user?.student_id) {
+      loadMyGrades();
+    }
+  }, [selectedSubject]);
+
+  const loadMyGrades = async () => {
+    if (!user?.class_id || !selectedSubject) return;
+    
+    try {
+      const response = await fetch(`${API_GRADES}?class_id=${user.class_id}&subject_id=${selectedSubject}`);
+      const data = await response.json();
+      const myData = data.data?.find((s: any) => s.student_id === user.student_id);
+      setMyGrades(myData ? myData.grades : []);
+    } catch (error) {
+      console.error('Error loading grades');
+    }
+  };
+
+  return (
+    <Tabs defaultValue="grades" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="grades">
+          <Icon name="Award" size={16} className="mr-2" />
+          Мои оценки
+        </TabsTrigger>
+        <TabsTrigger value="homework">
+          <Icon name="BookOpen" size={16} className="mr-2" />
+          Домашние задания
+        </TabsTrigger>
+        <TabsTrigger value="schedule">
+          <Icon name="Calendar" size={16} className="mr-2" />
+          Расписание
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="grades">
+        <Card>
+          <CardHeader>
+            <CardTitle>Мои оценки</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Select value={selectedSubject?.toString()} onValueChange={(v) => setSelectedSubject(parseInt(v))}>
+              <SelectTrigger><SelectValue placeholder="Выберите предмет" /></SelectTrigger>
+              <SelectContent>
+                {subjects.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            {selectedSubject && (
+              <div className="space-y-4">
+                <div className="flex gap-2 flex-wrap">
+                  {myGrades.map((g: any, idx: number) => (
+                    <div key={idx} className="flex flex-col items-center gap-1">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold ${
+                        g.grade === 5 ? 'bg-green-100 text-green-800' :
+                        g.grade === 4 ? 'bg-blue-100 text-blue-800' :
+                        g.grade === 3 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {g.grade}
+                      </div>
+                      <span className="text-xs text-gray-500">{new Date(g.date).toLocaleDateString('ru-RU')}</span>
+                    </div>
+                  ))}
+                </div>
+                {myGrades.length > 0 && (
+                  <div className="text-center p-4 bg-primary/10 rounded-lg">
+                    <div className="text-sm text-gray-600">Средний балл</div>
+                    <div className="text-3xl font-bold text-primary">
+                      {(myGrades.reduce((sum, g) => sum + g.grade, 0) / myGrades.length).toFixed(2)}
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-          <TabsContent value="admin" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon name="School" size={20} />
-                    Классы
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Input 
-                      placeholder="Название класса" 
-                      value={newClassName}
-                      onChange={(e) => setNewClassName(e.target.value)}
-                    />
-                    <Input 
-                      placeholder="Год" 
-                      type="number"
-                      value={newClassYear}
-                      onChange={(e) => setNewClassYear(e.target.value)}
-                    />
-                    <Button onClick={createClass} className="w-full">Создать класс</Button>
+      <TabsContent value="homework">
+        <Card>
+          <CardHeader>
+            <CardTitle>Домашние задания</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {homework.map((hw: any) => (
+                <div key={hw.id} className="p-4 border rounded-lg">
+                  <div className="flex justify-between items-start mb-2">
+                    <Badge>{hw.subject_name}</Badge>
+                    <span className="text-sm text-gray-500">до {new Date(hw.due_date).toLocaleDateString('ru-RU')}</span>
                   </div>
-                  <div className="space-y-2">
-                    {classes.map(c => (
-                      <div key={c.id} className="p-2 bg-gray-50 rounded">{c.name} ({c.year})</div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon name="BookOpen" size={20} />
-                    Предметы
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Input 
-                      placeholder="Название предмета" 
-                      value={newSubjectName}
-                      onChange={(e) => setNewSubjectName(e.target.value)}
-                    />
-                    <Button onClick={createSubject} className="w-full">Создать предмет</Button>
-                  </div>
-                  <div className="space-y-2">
-                    {subjects.map(s => (
-                      <div key={s.id} className="p-2 bg-gray-50 rounded">{s.name}</div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon name="UserCheck" size={20} />
-                    Учителя
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Input 
-                      placeholder="ФИО" 
-                      value={newTeacherName}
-                      onChange={(e) => setNewTeacherName(e.target.value)}
-                    />
-                    <Input 
-                      placeholder="Логин" 
-                      value={newTeacherLogin}
-                      onChange={(e) => setNewTeacherLogin(e.target.value)}
-                    />
-                    <Input 
-                      placeholder="Пароль" 
-                      type="password"
-                      value={newTeacherPassword}
-                      onChange={(e) => setNewTeacherPassword(e.target.value)}
-                    />
-                    <Button onClick={createTeacher} className="w-full">Создать учителя</Button>
-                  </div>
-                  <div className="space-y-2">
-                    {teachers.map(t => (
-                      <div key={t.id} className="p-2 bg-gray-50 rounded">{t.full_name}</div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon name="Users" size={20} />
-                    Ученики
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Input 
-                      placeholder="ФИО" 
-                      value={newStudentName}
-                      onChange={(e) => setNewStudentName(e.target.value)}
-                    />
-                    <Input 
-                      placeholder="Логин" 
-                      value={newStudentLogin}
-                      onChange={(e) => setNewStudentLogin(e.target.value)}
-                    />
-                    <Input 
-                      placeholder="Пароль" 
-                      type="password"
-                      value={newStudentPassword}
-                      onChange={(e) => setNewStudentPassword(e.target.value)}
-                    />
-                    <Select value={newStudentClass} onValueChange={setNewStudentClass}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите класс" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classes.map(c => (
-                          <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button onClick={createStudent} className="w-full">Создать ученика</Button>
-                  </div>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {students.map(s => (
-                      <div key={s.id} className="p-2 bg-gray-50 rounded text-sm">
-                        {s.full_name} {s.class_name ? `(${s.class_name})` : ''}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                  <p className="text-gray-700">{hw.description}</p>
+                  <p className="text-sm text-gray-500 mt-2">Учитель: {hw.teacher_name}</p>
+                </div>
+              ))}
             </div>
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="schedule">
+        <Card>
+          <CardHeader>
+            <CardTitle>Расписание</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              {DAYS.map((day, idx) => (
+                <div key={idx} className="space-y-2">
+                  <h3 className="font-semibold text-lg">{day}</h3>
+                  {schedule
+                    .filter((s: any) => s.day_of_week === idx + 1)
+                    .sort((a: any, b: any) => a.lesson_number - b.lesson_number)
+                    .map((item: any) => (
+                      <div key={item.id} className="p-3 bg-blue-50 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">{item.lesson_number}. {item.subject_name}</span>
+                          <Badge variant="secondary">{item.teacher_name}</Badge>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 }

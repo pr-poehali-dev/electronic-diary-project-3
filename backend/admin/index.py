@@ -45,24 +45,98 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 
             elif entity == 'teachers':
                 cur.execute("""
-                    SELECT t.id, u.full_name, u.login 
+                    SELECT t.id, u.full_name, u.login, u.password, t.user_id
                     FROM teachers t 
                     JOIN users u ON t.user_id = u.id 
                     ORDER BY u.full_name
                 """)
                 rows = cur.fetchall()
-                data = [{'id': r[0], 'full_name': r[1], 'login': r[2]} for r in rows]
+                data = [{'id': r[0], 'full_name': r[1], 'login': r[2], 'password': r[3], 'user_id': r[4]} for r in rows]
                 
             elif entity == 'students':
                 cur.execute("""
-                    SELECT s.id, u.full_name, u.login, c.name as class_name, s.class_id
+                    SELECT s.id, u.full_name, u.login, u.password, c.name as class_name, s.class_id
                     FROM students s 
                     JOIN users u ON s.user_id = u.id 
                     LEFT JOIN classes c ON s.class_id = c.id
                     ORDER BY u.full_name
                 """)
                 rows = cur.fetchall()
-                data = [{'id': r[0], 'full_name': r[1], 'login': r[2], 'class_name': r[3], 'class_id': r[4]} for r in rows]
+                data = [{'id': r[0], 'full_name': r[1], 'login': r[2], 'password': r[3], 'class_name': r[4], 'class_id': r[5]} for r in rows]
+                
+            elif entity == 'teacher_subjects':
+                teacher_id = params.get('teacher_id')
+                if teacher_id:
+                    cur.execute("""
+                        SELECT ts.id, s.id as subject_id, s.name as subject_name
+                        FROM teacher_subjects ts
+                        JOIN subjects s ON ts.subject_id = s.id
+                        WHERE ts.teacher_id = %s
+                    """, (teacher_id,))
+                    rows = cur.fetchall()
+                    data = [{'id': r[0], 'subject_id': r[1], 'subject_name': r[2]} for r in rows]
+                else:
+                    data = []
+            
+            elif entity == 'schedule':
+                class_id = params.get('class_id')
+                if class_id:
+                    cur.execute("""
+                        SELECT s.id, s.day_of_week, s.lesson_number, 
+                               sub.name as subject_name, u.full_name as teacher_name
+                        FROM schedule s
+                        JOIN subjects sub ON s.subject_id = sub.id
+                        LEFT JOIN teachers t ON s.teacher_id = t.id
+                        LEFT JOIN users u ON t.user_id = u.id
+                        WHERE s.class_id = %s
+                        ORDER BY s.day_of_week, s.lesson_number
+                    """, (class_id,))
+                    rows = cur.fetchall()
+                    data = [{'id': r[0], 'day_of_week': r[1], 'lesson_number': r[2], 'subject_name': r[3], 'teacher_name': r[4]} for r in rows]
+                else:
+                    cur.execute("""
+                        SELECT s.id, s.day_of_week, s.lesson_number, 
+                               c.name as class_name, sub.name as subject_name, 
+                               u.full_name as teacher_name, s.class_id
+                        FROM schedule s
+                        JOIN classes c ON s.class_id = c.id
+                        JOIN subjects sub ON s.subject_id = sub.id
+                        LEFT JOIN teachers t ON s.teacher_id = t.id
+                        LEFT JOIN users u ON t.user_id = u.id
+                        ORDER BY c.name, s.day_of_week, s.lesson_number
+                    """)
+                    rows = cur.fetchall()
+                    data = [{'id': r[0], 'day_of_week': r[1], 'lesson_number': r[2], 'class_name': r[3], 'subject_name': r[4], 'teacher_name': r[5], 'class_id': r[6]} for r in rows]
+            
+            elif entity == 'homework':
+                class_id = params.get('class_id')
+                if class_id:
+                    cur.execute("""
+                        SELECT h.id, h.description, h.due_date, 
+                               sub.name as subject_name, u.full_name as teacher_name
+                        FROM homework h
+                        JOIN subjects sub ON h.subject_id = sub.id
+                        LEFT JOIN teachers t ON h.teacher_id = t.id
+                        LEFT JOIN users u ON t.user_id = u.id
+                        WHERE h.class_id = %s
+                        ORDER BY h.due_date DESC
+                    """, (class_id,))
+                    rows = cur.fetchall()
+                    data = [{'id': r[0], 'description': r[1], 'due_date': str(r[2]), 'subject_name': r[3], 'teacher_name': r[4]} for r in rows]
+                else:
+                    cur.execute("""
+                        SELECT h.id, h.description, h.due_date, 
+                               c.name as class_name, sub.name as subject_name, 
+                               u.full_name as teacher_name, h.class_id
+                        FROM homework h
+                        JOIN classes c ON h.class_id = c.id
+                        JOIN subjects sub ON h.subject_id = sub.id
+                        LEFT JOIN teachers t ON h.teacher_id = t.id
+                        LEFT JOIN users u ON t.user_id = u.id
+                        ORDER BY h.due_date DESC
+                    """)
+                    rows = cur.fetchall()
+                    data = [{'id': r[0], 'description': r[1], 'due_date': str(r[2]), 'class_name': r[3], 'subject_name': r[4], 'teacher_name': r[5], 'class_id': r[6]} for r in rows]
                 
             else:
                 data = []
@@ -75,6 +149,39 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
                 'isBase64Encoded': False,
                 'body': json.dumps({'data': data})
+            }
+        
+        elif method == 'DELETE':
+            entity_id = params.get('id')
+            
+            if entity == 'class':
+                cur.execute("DELETE FROM classes WHERE id = %s", (entity_id,))
+            elif entity == 'subject':
+                cur.execute("DELETE FROM subjects WHERE id = %s", (entity_id,))
+            elif entity == 'teacher':
+                cur.execute("SELECT user_id FROM teachers WHERE id = %s", (entity_id,))
+                user_row = cur.fetchone()
+                if user_row:
+                    cur.execute("DELETE FROM teachers WHERE id = %s", (entity_id,))
+                    cur.execute("DELETE FROM users WHERE id = %s", (user_row[0],))
+            elif entity == 'student':
+                cur.execute("SELECT user_id FROM students WHERE id = %s", (entity_id,))
+                user_row = cur.fetchone()
+                if user_row:
+                    cur.execute("DELETE FROM students WHERE id = %s", (entity_id,))
+                    cur.execute("DELETE FROM users WHERE id = %s", (user_row[0],))
+            elif entity == 'schedule':
+                cur.execute("DELETE FROM schedule WHERE id = %s", (entity_id,))
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'isBase64Encoded': False,
+                'body': json.dumps({'success': True})
             }
         
         elif method == 'POST':
@@ -126,6 +233,47 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 subject_id = body_data.get('subject_id')
                 
                 cur.execute("INSERT INTO teacher_classes (teacher_id, class_id, subject_id) VALUES (%s, %s, %s) RETURNING id", (teacher_id, class_id, subject_id))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                result = {'success': True, 'id': new_id}
+            
+            elif entity == 'teacher_subject':
+                teacher_id = body_data.get('teacher_id')
+                subject_id = body_data.get('subject_id')
+                
+                cur.execute("INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (%s, %s) RETURNING id", (teacher_id, subject_id))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                result = {'success': True, 'id': new_id}
+            
+            elif entity == 'schedule':
+                class_id = body_data.get('class_id')
+                subject_id = body_data.get('subject_id')
+                teacher_id = body_data.get('teacher_id')
+                day_of_week = body_data.get('day_of_week')
+                lesson_number = body_data.get('lesson_number')
+                
+                cur.execute("""
+                    INSERT INTO schedule (class_id, subject_id, teacher_id, day_of_week, lesson_number)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (class_id, subject_id, teacher_id, day_of_week, lesson_number))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                result = {'success': True, 'id': new_id}
+            
+            elif entity == 'homework':
+                class_id = body_data.get('class_id')
+                subject_id = body_data.get('subject_id')
+                teacher_id = body_data.get('teacher_id')
+                description = body_data.get('description', '')
+                due_date = body_data.get('due_date')
+                
+                cur.execute("""
+                    INSERT INTO homework (class_id, subject_id, teacher_id, description, due_date)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (class_id, subject_id, teacher_id, description, due_date))
                 new_id = cur.fetchone()[0]
                 conn.commit()
                 result = {'success': True, 'id': new_id}
