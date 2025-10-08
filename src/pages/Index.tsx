@@ -58,12 +58,15 @@ export default function Index() {
 
   const handleLogin = async () => {
     try {
+      console.log('Попытка входа:', { login, password, url: API_AUTH });
       const response = await fetch(API_AUTH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ login, password })
       });
+      console.log('Ответ получен:', response.status);
       const data = await response.json();
+      console.log('Данные:', data);
       
       if (data.success) {
         setUser(data.user);
@@ -75,6 +78,7 @@ export default function Index() {
         toast.error('Неверный логин или пароль');
       }
     } catch (error) {
+      console.error('Ошибка входа:', error);
       toast.error('Ошибка входа');
     }
   };
