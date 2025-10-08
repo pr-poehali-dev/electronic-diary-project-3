@@ -774,47 +774,157 @@ function AdminPanel({ classes, subjects, teachers, students, createEntity, delet
       </TabsContent>
 
       <TabsContent value="schedule">
-        <Card>
-          <CardHeader>
-            <CardTitle>Расписание</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-2 md:grid-cols-5">
-              <Select value={scheduleForm.class_id} onValueChange={(v) => setScheduleForm({...scheduleForm, class_id: v})}>
-                <SelectTrigger><SelectValue placeholder="Класс" /></SelectTrigger>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle>Добавить урок</CardTitle>
+              <CardDescription>Создать новый урок в расписании</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Класс</label>
+                  <Select value={scheduleForm.class_id} onValueChange={(v) => setScheduleForm({...scheduleForm, class_id: v})}>
+                    <SelectTrigger><SelectValue placeholder="Выберите класс" /></SelectTrigger>
+                    <SelectContent>
+                      {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Предмет</label>
+                  <Select value={scheduleForm.subject_id} onValueChange={(v) => setScheduleForm({...scheduleForm, subject_id: v})}>
+                    <SelectTrigger><SelectValue placeholder="Выберите предмет" /></SelectTrigger>
+                    <SelectContent>
+                      {subjects.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">День недели</label>
+                  <Select value={scheduleForm.day_of_week.toString()} onValueChange={(v) => setScheduleForm({...scheduleForm, day_of_week: parseInt(v)})}>
+                    <SelectTrigger><SelectValue placeholder="Выберите день" /></SelectTrigger>
+                    <SelectContent>
+                      {DAYS.map((d, i) => <SelectItem key={i} value={(i+1).toString()}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Номер урока</label>
+                  <Input 
+                    type="number" 
+                    placeholder="1-8" 
+                    min="1"
+                    max="8"
+                    value={scheduleForm.lesson_number} 
+                    onChange={(e) => setScheduleForm({...scheduleForm, lesson_number: parseInt(e.target.value) || 1})} 
+                  />
+                </div>
+                <Button 
+                  onClick={() => {
+                    createEntity('schedule', {
+                      class_id: parseInt(scheduleForm.class_id),
+                      subject_id: parseInt(scheduleForm.subject_id),
+                      teacher_id: null,
+                      day_of_week: scheduleForm.day_of_week,
+                      lesson_number: scheduleForm.lesson_number
+                    });
+                    setScheduleForm({ class_id: '', subject_id: '', teacher_id: '', day_of_week: 1, lesson_number: 1 });
+                  }}
+                  className="w-full"
+                  disabled={!scheduleForm.class_id || !scheduleForm.subject_id}
+                >
+                  <Icon name="Plus" size={16} className="mr-2" />
+                  Добавить урок
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Расписание по классам</CardTitle>
+              <CardDescription>Выберите класс для просмотра и редактирования</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select value={selectedClass?.toString()} onValueChange={(v) => setSelectedClass(parseInt(v))}>
+                <SelectTrigger className="mb-4"><SelectValue placeholder="Выберите класс" /></SelectTrigger>
                 <SelectContent>
                   {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={scheduleForm.subject_id} onValueChange={(v) => setScheduleForm({...scheduleForm, subject_id: v})}>
-                <SelectTrigger><SelectValue placeholder="Предмет" /></SelectTrigger>
-                <SelectContent>
-                  {subjects.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={scheduleForm.day_of_week.toString()} onValueChange={(v) => setScheduleForm({...scheduleForm, day_of_week: parseInt(v)})}>
-                <SelectTrigger><SelectValue placeholder="День" /></SelectTrigger>
-                <SelectContent>
-                  {DAYS.map((d, i) => <SelectItem key={i} value={(i+1).toString()}>{d}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Input type="number" placeholder="Урок №" value={scheduleForm.lesson_number} onChange={(e) => setScheduleForm({...scheduleForm, lesson_number: parseInt(e.target.value) || 1})} />
-              <Button onClick={() => {
-                createEntity('schedule', {
-                  class_id: parseInt(scheduleForm.class_id),
-                  subject_id: parseInt(scheduleForm.subject_id),
-                  teacher_id: null,
-                  day_of_week: scheduleForm.day_of_week,
-                  lesson_number: scheduleForm.lesson_number
-                });
-              }}>
-                Добавить
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              
+              {selectedClass ? (
+                <ScheduleGrid 
+                  classId={selectedClass} 
+                  schedule={schedule} 
+                  deleteEntity={deleteEntity}
+                  loadData={loadData}
+                />
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <Icon name="Calendar" size={64} className="mx-auto mb-3 opacity-30" />
+                  <p>Выберите класс для просмотра расписания</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </TabsContent>
     </Tabs>
+  );
+}
+
+function ScheduleGrid({ classId, schedule, deleteEntity, loadData }: any) {
+  const classSchedule = schedule.filter((s: any) => s.class_id === classId);
+  
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {DAYS.map((day, idx) => {
+        const dayLessons = classSchedule
+          .filter((s: any) => s.day_of_week === idx + 1)
+          .sort((a: any, b: any) => a.lesson_number - b.lesson_number);
+        
+        return (
+          <div key={idx} className="border rounded-lg p-4 bg-gray-50">
+            <h3 className="font-semibold text-lg mb-3 flex items-center">
+              <Icon name="Calendar" size={18} className="mr-2 text-primary" />
+              {day}
+              <Badge variant="outline" className="ml-auto">{dayLessons.length} уроков</Badge>
+            </h3>
+            {dayLessons.length === 0 ? (
+              <p className="text-sm text-gray-500 italic text-center py-4">Нет уроков</p>
+            ) : (
+              <div className="space-y-2">
+                {dayLessons.map((item: any) => (
+                  <div key={item.id} className="p-3 bg-white rounded-lg border hover:border-primary transition flex justify-between items-center">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="secondary" className="text-xs">Урок {item.lesson_number}</Badge>
+                      </div>
+                      <div className="font-medium">{item.subject_name}</div>
+                      {item.teacher_name && (
+                        <div className="text-xs text-gray-600 mt-1">{item.teacher_name}</div>
+                      )}
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={async () => {
+                        await deleteEntity('schedule', item.id);
+                        loadData();
+                      }}
+                    >
+                      <Icon name="Trash2" size={14} className="text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -915,67 +1025,217 @@ function TeacherPanel({ user, classes, subjects, teacherSubjects, gradesData, se
       </TabsContent>
 
       <TabsContent value="homework">
-        <Card>
-          <CardHeader>
-            <CardTitle>Домашние задания</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-2">
-              <Select value={homeworkForm.class_id} onValueChange={(v) => setHomeworkForm({...homeworkForm, class_id: v})}>
-                <SelectTrigger><SelectValue placeholder="Класс" /></SelectTrigger>
-                <SelectContent>
-                  {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={homeworkForm.subject_id} onValueChange={(v) => setHomeworkForm({...homeworkForm, subject_id: v})}>
-                <SelectTrigger><SelectValue placeholder="Предмет" /></SelectTrigger>
-                <SelectContent>
-                  {teacherSubjects.map((s: any) => <SelectItem key={s.subject_id} value={s.subject_id.toString()}>{s.subject_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Textarea placeholder="Описание задания" value={homeworkForm.description} onChange={(e) => setHomeworkForm({...homeworkForm, description: e.target.value})} />
-              <Input type="date" value={homeworkForm.due_date} onChange={(e) => setHomeworkForm({...homeworkForm, due_date: e.target.value})} />
-              <Button onClick={() => {
-                createEntity('homework', {
-                  class_id: parseInt(homeworkForm.class_id),
-                  subject_id: parseInt(homeworkForm.subject_id),
-                  teacher_id: user.teacher_id,
-                  description: homeworkForm.description,
-                  due_date: homeworkForm.due_date
-                });
-                setHomeworkForm({ class_id: '', subject_id: '', description: '', due_date: '' });
-              }}>
-                Создать задание
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Создать домашнее задание</CardTitle>
+              <CardDescription>Добавить новое задание для класса</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Класс</label>
+                  <Select value={homeworkForm.class_id} onValueChange={(v) => setHomeworkForm({...homeworkForm, class_id: v})}>
+                    <SelectTrigger><SelectValue placeholder="Выберите класс" /></SelectTrigger>
+                    <SelectContent>
+                      {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Предмет</label>
+                  <Select value={homeworkForm.subject_id} onValueChange={(v) => setHomeworkForm({...homeworkForm, subject_id: v})}>
+                    <SelectTrigger><SelectValue placeholder="Выберите предмет" /></SelectTrigger>
+                    <SelectContent>
+                      {teacherSubjects.map((s: any) => <SelectItem key={s.subject_id} value={s.subject_id.toString()}>{s.subject_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Описание задания</label>
+                  <Textarea 
+                    placeholder="Напишите задание для учеников..."
+                    value={homeworkForm.description} 
+                    onChange={(e) => setHomeworkForm({...homeworkForm, description: e.target.value})}
+                    rows={4}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Срок сдачи</label>
+                  <Input 
+                    type="date" 
+                    value={homeworkForm.due_date} 
+                    onChange={(e) => setHomeworkForm({...homeworkForm, due_date: e.target.value})} 
+                  />
+                </div>
+                <Button 
+                  onClick={() => {
+                    createEntity('homework', {
+                      class_id: parseInt(homeworkForm.class_id),
+                      subject_id: parseInt(homeworkForm.subject_id),
+                      teacher_id: user.teacher_id,
+                      description: homeworkForm.description,
+                      due_date: homeworkForm.due_date
+                    });
+                    setHomeworkForm({ class_id: '', subject_id: '', description: '', due_date: '' });
+                    loadHomework();
+                  }}
+                  className="w-full"
+                  disabled={!homeworkForm.class_id || !homeworkForm.subject_id || !homeworkForm.description || !homeworkForm.due_date}
+                >
+                  <Icon name="Plus" size={16} className="mr-2" />
+                  Создать задание
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Мои домашние задания</CardTitle>
+              <CardDescription>Список активных заданий</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                {homework.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Icon name="BookOpen" size={48} className="mx-auto mb-2 opacity-50" />
+                    <p>Пока нет домашних заданий</p>
+                  </div>
+                ) : (
+                  homework.map((hw: any) => (
+                    <div key={hw.id} className="p-4 border rounded-lg hover:bg-gray-50 transition">
+                      <div className="flex justify-between items-start mb-2">
+                        <Badge variant="secondary">{hw.subject_name}</Badge>
+                        <span className="text-xs text-gray-500">{hw.class_name}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 mb-2">{hw.description}</p>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-500">Срок: {new Date(hw.due_date).toLocaleDateString('ru-RU')}</span>
+                        <span className={`font-medium ${
+                          new Date(hw.due_date) < new Date() ? 'text-red-600' : 'text-green-600'
+                        }`}>
+                          {new Date(hw.due_date) < new Date() ? 'Просрочено' : 'Активно'}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </TabsContent>
 
       <TabsContent value="schedule">
         <Card>
           <CardHeader>
-            <CardTitle>Расписание</CardTitle>
+            <CardTitle>Расписание занятий</CardTitle>
+            <CardDescription>Просмотр расписания по классам</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <Select value={selectedClass?.toString()} onValueChange={(v) => { setSelectedClass(parseInt(v)); loadSchedule(); }}>
-              <SelectTrigger><SelectValue placeholder="Выберите класс" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Выберите класс для просмотра" /></SelectTrigger>
               <SelectContent>
                 {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <div className="mt-4 space-y-2">
-              {schedule.map((item: any) => (
-                <div key={item.id} className="p-3 bg-gray-50 rounded-lg">
-                  <div className="font-medium">{DAYS[item.day_of_week - 1]} - Урок {item.lesson_number}</div>
-                  <div className="text-sm text-gray-600">{item.subject_name}</div>
-                </div>
-              ))}
-            </div>
+            
+            {selectedClass ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {DAYS.map((day, idx) => {
+                  const dayLessons = schedule.filter((s: any) => s.day_of_week === idx + 1).sort((a: any, b: any) => a.lesson_number - b.lesson_number);
+                  return (
+                    <div key={idx} className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-lg mb-3 flex items-center">
+                        <Icon name="Calendar" size={18} className="mr-2 text-primary" />
+                        {day}
+                      </h3>
+                      {dayLessons.length === 0 ? (
+                        <p className="text-sm text-gray-500 italic">Нет уроков</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {dayLessons.map((item: any) => (
+                            <div key={item.id} className="p-3 bg-primary/5 rounded-lg border-l-4 border-primary">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="text-xs text-gray-500 mb-1">Урок {item.lesson_number}</div>
+                                  <div className="font-medium text-sm">{item.subject_name}</div>
+                                  {item.teacher_name && (
+                                    <div className="text-xs text-gray-600 mt-1">{item.teacher_name}</div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <Icon name="Calendar" size={64} className="mx-auto mb-3 opacity-30" />
+                <p>Выберите класс для просмотра расписания</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </TabsContent>
     </Tabs>
+  );
+}
+
+function ScheduleGrid({ classId, schedule, deleteEntity, loadData }: any) {
+  const classSchedule = schedule.filter((s: any) => s.class_id === classId);
+  
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {DAYS.map((day, idx) => {
+        const dayLessons = classSchedule
+          .filter((s: any) => s.day_of_week === idx + 1)
+          .sort((a: any, b: any) => a.lesson_number - b.lesson_number);
+        
+        return (
+          <div key={idx} className="border rounded-lg p-4 bg-gray-50">
+            <h3 className="font-semibold text-lg mb-3 flex items-center">
+              <Icon name="Calendar" size={18} className="mr-2 text-primary" />
+              {day}
+              <Badge variant="outline" className="ml-auto">{dayLessons.length} уроков</Badge>
+            </h3>
+            {dayLessons.length === 0 ? (
+              <p className="text-sm text-gray-500 italic text-center py-4">Нет уроков</p>
+            ) : (
+              <div className="space-y-2">
+                {dayLessons.map((item: any) => (
+                  <div key={item.id} className="p-3 bg-white rounded-lg border hover:border-primary transition flex justify-between items-center">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="secondary" className="text-xs">Урок {item.lesson_number}</Badge>
+                      </div>
+                      <div className="font-medium">{item.subject_name}</div>
+                      {item.teacher_name && (
+                        <div className="text-xs text-gray-600 mt-1">{item.teacher_name}</div>
+                      )}
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={async () => {
+                        await deleteEntity('schedule', item.id);
+                        loadData();
+                      }}
+                    >
+                      <Icon name="Trash2" size={14} className="text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1161,5 +1421,58 @@ function StudentPanel({ user, subjects, schedule, homework, gradesData, selected
         </Card>
       </TabsContent>
     </Tabs>
+  );
+}
+
+function ScheduleGrid({ classId, schedule, deleteEntity, loadData }: any) {
+  const classSchedule = schedule.filter((s: any) => s.class_id === classId);
+  
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {DAYS.map((day, idx) => {
+        const dayLessons = classSchedule
+          .filter((s: any) => s.day_of_week === idx + 1)
+          .sort((a: any, b: any) => a.lesson_number - b.lesson_number);
+        
+        return (
+          <div key={idx} className="border rounded-lg p-4 bg-gray-50">
+            <h3 className="font-semibold text-lg mb-3 flex items-center">
+              <Icon name="Calendar" size={18} className="mr-2 text-primary" />
+              {day}
+              <Badge variant="outline" className="ml-auto">{dayLessons.length} уроков</Badge>
+            </h3>
+            {dayLessons.length === 0 ? (
+              <p className="text-sm text-gray-500 italic text-center py-4">Нет уроков</p>
+            ) : (
+              <div className="space-y-2">
+                {dayLessons.map((item: any) => (
+                  <div key={item.id} className="p-3 bg-white rounded-lg border hover:border-primary transition flex justify-between items-center">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="secondary" className="text-xs">Урок {item.lesson_number}</Badge>
+                      </div>
+                      <div className="font-medium">{item.subject_name}</div>
+                      {item.teacher_name && (
+                        <div className="text-xs text-gray-600 mt-1">{item.teacher_name}</div>
+                      )}
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={async () => {
+                        await deleteEntity('schedule', item.id);
+                        loadData();
+                      }}
+                    >
+                      <Icon name="Trash2" size={14} className="text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
